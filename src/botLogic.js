@@ -781,15 +781,28 @@ async function handleAskingName(phone, message, session) {
   // Si ya tenemos un nombre parcial guardado, el cliente está dando el apellido
   const nombreParcial = session.tempData?.nombreParcial;
   if (nombreParcial) {
-    const apellido = sheetsService.limpiarNombre(message);
-    if (apellido && apellido !== nombreParcial) {
-      const nombreCompleto = `${nombreParcial} ${apellido}`;
+    const posibleApellido = message.trim()
+      .replace(/^(mi\s+apellido\s+(es|:)?|me\s+llamo|soy)\s+/i, '')
+      .trim();
+
+    if (posibleApellido.length > 2 && !/^\d+$/.test(posibleApellido)) {
+      const apellidoLimpio = posibleApellido.charAt(0).toUpperCase() +
+        posibleApellido.slice(1).toLowerCase();
+      const nombreCompleto = `${nombreParcial} ${apellidoLimpio}`;
+
       await sessionManager.updateSession(phone, {
         flowState: 'confirming_name',
-        tempData: { ...session.tempData, namePendiente: nombreCompleto, nombreParcial: undefined, nameAttempts: 0 },
+        tempData: {
+          ...session.tempData,
+          namePendiente: nombreCompleto,
+          nombreParcial: undefined,
+          nameAttempts: 0,
+        },
       });
       return `Solo para confirmar — ¿tu nombre es *${nombreCompleto}*? 😊`;
     }
+
+    return '¿Me das tu apellido? Por ejemplo: García, López, Martínez 😊';
   }
 
   // PRIMERO extraer nombre de frases como "con X", "soy X", "me llamo X"
@@ -874,64 +887,20 @@ async function handleAskingName(phone, message, session) {
 
     if (tieneApellido) {
       // Tiene nombre y apellido → confirmar antes de guardar
-      sessionManager.updateSession(phone, {
+      await sessionManager.updateSession(phone, {
         flowState: 'confirming_name',
         tempData: { ...session.tempData, namePendiente: nombre, nameAttempts: 0 },
       });
       return `Solo para confirmar — ¿tu nombre es *${nombre}*? 😊`;
     }
 
-    // Solo una palabra → pedir nombre completo
-    const reintentos = session.tempData?.nameAttempts ?? 0;
-    if (reintentos < 2) {
-      await sessionManager.updateSession(phone, {
-        tempData: { ...session.tempData, nameAttempts: reintentos + 1, nombreParcial: nombre },
-      });
-      const first = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
-      return `Gracias ${first} 😊 ¿Me das también tu apellido para tener tus datos completos?`;
-    }
-
-    // Agotó intentos con solo nombre → aceptar lo que hay y continuar
+    // Solo una palabra → guardar como parcial y pedir apellido
+    // Resetear nameAttempts — el contador de apellido es independiente del de nombre
+    const first = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
     await sessionManager.updateSession(phone, {
-      flowState: 'active',
-      tempData: { ...session.tempData, name: nombre, nameAttempts: 0 },
-      customer: { ...session.customer, name: nombre },
+      tempData: { ...session.tempData, nombreParcial: nombre, nameAttempts: 0 },
     });
-
-    // Ejecutar escalaciones pendientes si las hay
-    if (session.tempData?.escalacionPendienteZonaLocal ||
-        session.tempData?.escalacionPendienteMayoreo ||
-        session.tempData?.escalacionPendienteHumano) {
-      const motivo = session.tempData?.motivoEscalacion || 'Cliente solicitó asesor';
-      await notifyWig(phone, { ...session, tempData: { ...session.tempData, name: nombre } }, motivo);
-      await sessionManager.updateSession(phone, {
-        flowState: 'waiting_for_wig',
-        tempData: {
-          ...session.tempData,
-          name: nombre,
-          escalacionPendienteZonaLocal: undefined,
-          escalacionPendienteMayoreo: undefined,
-          escalacionPendienteHumano: undefined,
-        },
-      });
-      return `¡Mucho gusto, ${primerNombre(nombre)}! 😊 Un asesor te contactará en breve 🙌`;
-    }
-
-    // Sin escalación pendiente → continuar flujo normal
-    const intentPrevio = session.tempData?.intentPrevio;
-    if (intentPrevio) {
-      await sessionManager.updateSession(phone, {
-        tempData: { ...session.tempData, name: nombre, intentPrevio: undefined },
-      });
-      const updatedSession = await sessionManager.getSession(phone);
-      const respuesta = await handleActive(phone, intentPrevio, updatedSession);
-      return `¡Mucho gusto, ${primerNombre(nombre)}! 😊\n\n${respuesta}`;
-    }
-    return pick([
-      `¡Mucho gusto, ${primerNombre(nombre)}! 😊 ¿En qué te puedo ayudar?`,
-      `¡Qué bueno que nos escribes, ${primerNombre(nombre)}! ¿En qué te ayudo?`,
-      `Gracias ${primerNombre(nombre)} 🌾 ¿Qué necesitas hoy?`,
-    ]);
+    return `Gracias ${first} 😊 ¿Me das también tu apellido para tener tus datos completos?`;
   }
 
   // Nombre inválido
