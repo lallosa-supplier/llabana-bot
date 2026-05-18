@@ -350,6 +350,13 @@ async function handleMessage(phone, messageBody) {
       // para evitar que Claude vuelva a detectar escalación y genere loop
       const msg = messageBody.trim().toLowerCase();
 
+      // Detectar enojo extremo — insultos o lenguaje muy agresivo
+      const esEnojo = /no sirve|de juguete|mala atención|pésimo|asco|basura|incompetentes|no la chinguen|chingue|pinche|puta|cabrón|idiota|inútil|no funciona|estafadores?/i.test(messageBody);
+      if (esEnojo) {
+        await notifyWig(phone, session, `🚨🚨🚨 CLIENTE MUY ENOJADO — ATENCIÓN INMEDIATA: "${messageBody.substring(0, 150)}"`);
+        return `Tienes toda la razón y lamento profundamente la experiencia que has tenido 😔\nEsto no refleja cómo queremos atenderte. Acabo de marcar tu caso como URGENTE para que un asesor te contacte a la brevedad posible.\nMereces una mejor atención y nos aseguraremos de dártela 🙏`;
+      }
+
       // Detectar frustración acumulada — siempre renotificar a Wig con urgencia
       const esFrustradoEsperando = /muchas\s+veces|varias\s+veces|ya\s+llevo|cuándo|cuando\s+me|nadie\s+me|siguen\s+sin|no\s+me\s+han|no\s+han|d[ií]as?\s+(esperando|sin)|horas\s+esperando|estoy\s+esperando|sigo\s+esperando|llevo\s+esperando|no\s+me\s+contactan|sin\s+respuesta|no\s+hay\s+respuesta/i.test(messageBody);
       if (esFrustradoEsperando) {
@@ -1546,6 +1553,13 @@ async function handleEscalated(phone, message, session) {
     });
     await notifyWig(phone, session, `Cliente retomó conversación — ya en horario de atención`);
     return 'Ya avisé al asesor, en breve te contacta 🙌 ¿Hay algo en lo que pueda ayudarte mientras tanto?';
+  }
+
+  // Detectar enojo extremo — insultos o lenguaje muy agresivo
+  const esEnojo = /no sirve|de juguete|mala atención|pésimo|asco|basura|incompetentes|no la chinguen|chingue|pinche|puta|cabrón|idiota|inútil|no funciona|estafadores?/i.test(message);
+  if (esEnojo) {
+    await notifyWig(phone, session, `🚨🚨🚨 CLIENTE MUY ENOJADO — ATENCIÓN INMEDIATA: "${message.substring(0, 150)}"`);
+    return `Tienes toda la razón y lamento profundamente la experiencia que has tenido 😔\nEsto no refleja cómo queremos atenderte. Acabo de marcar tu caso como URGENTE para que un asesor te contacte a la brevedad posible.\nMereces una mejor atención y nos aseguraremos de dártela 🙏`;
   }
 
   // Detección de frustración acumulada — siempre renotificar a Wig
