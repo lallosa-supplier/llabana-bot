@@ -127,6 +127,17 @@ function isEscalationProfile(text) {
   return ESCALATION_PROFILE_PATTERNS.some(re => re.test(text.trim()));
 }
 
+const DISTRIBUIDOR_PATTERNS = [
+  /\bdistribui[dr]/i, /\bser\s+distribuidor/i, /\bvender\s+sus\s+productos/i,
+  /\bfranquicia/i, /\brevendedor/i, /\bpunto\s+de\s+venta\s+propio/i,
+  /\bquiero\s+vender\b/i, /\bcomercializar/i, /\bdistribución\s+exclusiva/i,
+  /\bagente\s+de\s+ventas/i, /\bconvertirme\s+en\s+distribuidor/i,
+];
+
+function isDistribuidor(text) {
+  return DISTRIBUIDOR_PATTERNS.some(re => re.test(text));
+}
+
 function isRequestingHuman(text) {
   return HUMAN_REQUEST_PATTERNS.some(re => re.test(text.trim()));
 }
@@ -1043,6 +1054,14 @@ async function handleActive(phone, message, session) {
     return 'Ahorita te conecto con un asesor 🙌';
   }
 
+  // Distribuidor — recolectar info antes de escalar
+  if (isDistribuidor(message)) {
+    await sessionManager.updateSession(phone, {
+      tempData: { ...session.tempData, infoDistribuidor: { esperando: 'ciudad' } },
+    });
+    return `¡Qué interesante! Para orientarte mejor, ¿en qué ciudad o municipio estás? 📍`;
+  }
+
   // Escalación por perfil (mayoreo, negocio, etc.)
   if (isEscalationProfile(message)) {
     const nombreActual = session.tempData?.name || session.customer?.name || '';
@@ -1237,6 +1256,55 @@ async function handleActive(phone, message, session) {
         tempData: { ...session.tempData, cantidadAnimales: cantidad },
       });
     }
+  }
+
+  // Flujo de recolección de información para distribuidor
+  const infoDistribuidor = session.tempData?.infoDistribuidor;
+  if (infoDistribuidor?.esperando) {
+    const updatedInfo = { ...infoDistribuidor };
+
+    if (infoDistribuidor.esperando === 'ciudad') {
+      updatedInfo.ciudad = message.trim();
+      updatedInfo.esperando = 'tipoNegocio';
+      await sessionManager.updateSession(phone, {
+        tempData: { ...session.tempData, infoDistribuidor: updatedInfo },
+      });
+      return `¡Perfecto! ¿Qué tipo de negocio tienes o planeas abrir? Por ejemplo: tienda de mascotas, forrajería, agropecuaria, veterinaria... 🏪`;
+    }
+
+    if (infoDistribuidor.esperando === 'tipoNegocio') {
+      updatedInfo.tipoNegocio = message.trim();
+      updatedInfo.esperando = 'volumen';
+      await sessionManager.updateSession(phone, {
+        tempData: { ...session.tempData, infoDistribuidor: updatedInfo },
+      });
+      return `¡Genial! ¿Tienes idea del volumen aproximado que manejarías al mes? Por ejemplo: 10 bultos, 50 bultos, más de 100... 📦`;
+    }
+
+    if (infoDistribuidor.esperando === 'volumen') {
+      updatedInfo.volumen = message.trim();
+      const resumen = `Interesado en distribuir | Ciudad: ${updatedInfo.ciudad} | Negocio: ${updatedInfo.tipoNegocio} | Volumen estimado: ${updatedInfo.volumen}`;
+      await notifyWig(phone, session, resumen);
+      await sessionManager.updateSession(phone, {
+        flowState: 'waiting_for_wig',
+        tempData: { ...session.tempData, infoDistribuidor: undefined },
+      });
+      const nombre = primerNombre(session.customer?.name || '');
+      return nombre
+        ? `¡Perfecto, ${nombre}! Con esa información un asesor especializado te contactará en breve para platicar sobre las opciones de distribución 😊`
+        : `¡Perfecto! Con esa información un asesor especializado te contactará en breve para platicar sobre las opciones de distribución 😊`;
+    }
+  }
+
+  // Si ya tenemos ciudad y tipo pero falta volumen → continuar cuestionario
+  if (infoDistribuidor?.ciudad && infoDistribuidor?.tipoNegocio && !infoDistribuidor?.esperando) {
+    const resumen = `Interesado en distribuir | Ciudad: ${infoDistribuidor.ciudad} | Negocio: ${infoDistribuidor.tipoNegocio} | Volumen: No especificado`;
+    await notifyWig(phone, session, resumen);
+    await sessionManager.updateSession(phone, {
+      flowState: 'waiting_for_wig',
+      tempData: { ...session.tempData, infoDistribuidor: undefined },
+    });
+    return `¡Perfecto! Con esa información un asesor especializado te contactará en breve para platicar sobre las opciones 😊`;
   }
 
   // Detectar pregunta de cobertura/sucursal en una ciudad
@@ -1455,14 +1523,28 @@ async function handleActive(phone, message, session) {
   session.conversationHistory.push({ role: 'assistant', content: response });
   session.conversationHistory = trimHistory(session.conversationHistory);
   await sessionManager.updateSession(phone, { conversationHistory: session.conversationHistory });
-  sheetsService.appendConversationLog(phone, message, response).catch(() => {});
+  // Si Claude dio links de productos y no hay pregunta → agregar cierre activo
+  const dioLinks = response.includes('llabanaenlinea.com/products/');
+  const yaHayPregunta = /\?/.test(response.split('\n').slice(-2).join(''));
+
+  let respuestaFinal = response;
+  if (dioLinks && !yaHayPregunta) {
+    const cierres = [
+      '\n\n¿Lo agregamos al carrito? 🛒',
+      '\n\n¿Arrancamos con el pedido? 😊',
+      '\n\n¿Te ayudo a hacer el pedido paso a paso? 🛒',
+    ];
+    respuestaFinal = response + cierres[Math.floor(Math.random() * cierres.length)];
+  }
+
+  sheetsService.appendConversationLog(phone, message, respuestaFinal).catch(() => {});
 
   // Si el bot recomendó un producto (tiene link de la tienda), taggear como asesorado
-  if (response.includes('llabanaenlinea.com') && session.customer?.rowIndex) {
+  if (respuestaFinal.includes('llabanaenlinea.com') && session.customer?.rowIndex) {
     sheetsService.appendTag(session.customer.rowIndex, 'Asesorado Bot').catch(() => {});
   }
 
-  return response;
+  return respuestaFinal;
 }
 
 // ── CP antes de escalar ───────────────────────────────────────────────────────
