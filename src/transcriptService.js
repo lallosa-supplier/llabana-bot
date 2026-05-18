@@ -3,6 +3,14 @@ const { google } = require('googleapis');
 const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_ID;
 const SHEET = '5 Transcripciones';
 
+// Google Sheets tiene límite de ~50 000 caracteres por celda.
+// Transcripts largos causan "Internal error encountered" — truncar preventivamente.
+const MAX_CELL_CHARS = 48000;
+function truncarTranscript(t) {
+  if (!t || t.length <= MAX_CELL_CHARS) return t;
+  return t.slice(0, MAX_CELL_CHARS) + '\n...[transcript truncado por límite de celda]';
+}
+
 function getSheets() {
   let credentials;
   if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
@@ -34,7 +42,7 @@ async function saveTranscript(nombre, telefono, transcript) {
     range: `${SHEET}!A:D`,
     valueInputOption: 'RAW',
     requestBody: {
-      values: [[fecha, nombre, telefono, transcript]]
+      values: [[fecha, nombre, telefono, truncarTranscript(transcript)]]
     }
   });
 }
@@ -98,7 +106,7 @@ async function updateTranscript(telefono, nombre, transcript) {
       range: `${SHEET}!A${sheetRow}:D${sheetRow}`,
       valueInputOption: 'RAW',
       requestBody: {
-        values: [[fecha, nombre || rows[rowIndex][1] || '', rows[rowIndex][2] || '', transcript]]
+        values: [[fecha, nombre || rows[rowIndex][1] || '', rows[rowIndex][2] || '', truncarTranscript(transcript)]]
       }
     });
   } else {
@@ -108,7 +116,7 @@ async function updateTranscript(telefono, nombre, transcript) {
       valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
       requestBody: {
-        values: [[fecha, nombre || '', telefono, transcript]]
+        values: [[fecha, nombre || '', telefono, truncarTranscript(transcript)]]
       }
     });
   }
