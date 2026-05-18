@@ -1217,6 +1217,40 @@ async function handleActive(phone, message, session) {
     }
   }
 
+  // Detectar pregunta de cobertura/sucursal en una ciudad
+  const preguntaCobertura = /\b(sucursal|tienda|distribuidora?|punto\s+de\s+venta|local|cobertura|recog[e]r|pasar\s+por|ir\s+por|recoger)\b/i.test(message);
+
+  if (preguntaCobertura) {
+    const ciudadBuscar = message
+      .replace(/\b(tienen?|hay|tienda|sucursal|en|la|el|de|por|distribuidora?|punto|venta|local|si|no|existe|cerca|alguna?|cobertura|puedo|pasar|recoger|ir)\b/gi, ' ')
+      .replace(/[¿?¡!,]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (ciudadBuscar.length > 2) {
+      try {
+        const sucursal = await sheetsService.findCityInSucursales(ciudadBuscar);
+
+        let respuestaSucursal;
+        if (sucursal) {
+          respuestaSucursal = `¡Sí hay cobertura cerca de ti en ${sucursal.ciudad}! 😊\n¿Prefieres pasar a recoger tu pedido o te lo enviamos a domicilio? 📦`;
+        } else {
+          respuestaSucursal = `En ${ciudadBuscar} no tenemos cobertura directa por el momento 😔\nPero te enviamos por paquetería a domicilio a todo México 📦\n¿Me dices tu CP para decirte exactamente cuánto tarda?`;
+        }
+
+        // El mensaje de usuario ya fue agregado al historial en línea ~998
+        session.conversationHistory.push({ role: 'assistant', content: respuestaSucursal });
+        session.conversationHistory = trimHistory(session.conversationHistory);
+        await sessionManager.updateSession(phone, { conversationHistory: session.conversationHistory });
+        sheetsService.appendConversationLog(phone, message, respuestaSucursal).catch(() => {});
+        return respuestaSucursal;
+      } catch (err) {
+        console.error('Error buscando cobertura:', err.message);
+        // Si falla la búsqueda, dejar que Claude responda con la instrucción del system prompt
+      }
+    }
+  }
+
   // Conversación con Claude
   // (el mensaje ya fue agregado al historial antes de los checks de escalación)
 
