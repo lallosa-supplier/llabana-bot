@@ -121,6 +121,10 @@ PASO 4 — Decide el canal según esta matriz (el bot ya tiene el CP en el conte
   → CP foráneo + 11 a 499 bultos → informar límite y ofrecer cotizar camión
   → Cualquier CP + 500+ bultos o 12+ toneladas → responde ESCALAR_A_WIG
 
+NOTA EDOMEX: Para CP de Estado de México NO digas "entrega directa garantizada".
+Di "un asesor confirma cobertura en tu zona específica" porque no todo Edomex
+tiene ruta de reparto. CDMX sí tiene cobertura completa.
+
 NUNCA des info de canal o envío sin tener el CP primero.
 Si el cliente pregunta "¿hacen envíos?" antes de dar CP → responde:
 "Sí enviamos a todo México 📦 ¿Me dices tu código postal para decirte exactamente cómo te llegará?"

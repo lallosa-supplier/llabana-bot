@@ -652,8 +652,8 @@ async function handleAskingMexico(phone, message, session) {
       });
       const firstName = primerNombre(session.tempData?.name || '');
       return firstName
-        ? `¡Perfecto, ${firstName}! Tu zona tiene opciones de entrega directa 🚚\nNuestros asesores te contactarán mañana a primera hora para coordinar la entrega. ¿Puedo ayudarte con algo más mientras tanto?`
-        : `¡Perfecto! Tu zona tiene opciones de entrega directa 🚚\nNuestros asesores te contactarán mañana a primera hora para coordinar la entrega. ¿Puedo ayudarte con algo más mientras tanto?`;
+        ? `¡Perfecto, ${firstName}! Estás en zona de Estado de México 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`
+        : `¡Perfecto! Estás en zona de Estado de México 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`;
     }
 
     await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
@@ -1118,8 +1118,8 @@ async function handleActive(phone, message, session) {
         });
         const firstName = primerNombre(session.customer?.name || '');
         return firstName
-          ? `¡Perfecto, ${firstName}! Tu zona tiene opciones de entrega directa 🚚\nNuestros asesores te contactarán mañana a primera hora para coordinar la entrega. ¿Puedo ayudarte con algo más mientras tanto?`
-          : `¡Perfecto! Tu zona tiene opciones de entrega directa 🚚\nNuestros asesores te contactarán mañana a primera hora para coordinar la entrega. ¿Puedo ayudarte con algo más mientras tanto?`;
+          ? `¡Perfecto, ${firstName}! Estás en zona de Estado de México 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`
+          : `¡Perfecto! Estás en zona de Estado de México 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`;
       }
 
       await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
@@ -1448,14 +1448,22 @@ async function handleAskingCpBeforeEscalation(phone, message, session) {
         tempData: { ...session.tempData, escalacionPendiente: true },
       });
       return nombre
-        ? `¡Perfecto, ${nombre}! Tu zona tiene opciones de entrega directa 🚚\nNuestros asesores te contactarán mañana a primera hora para coordinar la entrega. ¿Puedo ayudarte con algo más mientras tanto?`
-        : `¡Perfecto! Tu zona tiene opciones de entrega directa 🚚\nNuestros asesores te contactarán mañana a primera hora para coordinar la entrega. ¿Puedo ayudarte con algo más mientras tanto?`;
+        ? zonaLabel === 'CDMX'
+          ? `¡Perfecto, ${nombre}! Estás en CDMX 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`
+          : `¡Perfecto, ${nombre}! Estás en zona de Estado de México 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`
+        : zonaLabel === 'CDMX'
+          ? `¡Perfecto! Estás en CDMX 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`
+          : `¡Perfecto! Estás en zona de Estado de México 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`;
     }
 
     sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
     return nombre
-      ? `¡Listo, ${nombre}! 😊 Un asesor te contactará en breve para coordinar la entrega directa 🚚`
-      : '¡Listo! 😊 Un asesor te contactará en breve para coordinar la entrega directa 🚚';
+      ? zonaLabel === 'CDMX'
+        ? `¡Perfecto, ${nombre}! Estás en CDMX 😊\nUn asesor te contactará en breve para coordinar la entrega directa 🚚`
+        : `¡Listo, ${nombre}! 😊 Un asesor te contactará en breve para confirmar si tenemos cobertura de reparto en tu zona 🚚`
+      : zonaLabel === 'CDMX'
+        ? `¡Perfecto! Estás en CDMX 😊\nUn asesor te contactará en breve para coordinar la entrega directa 🚚`
+        : '¡Listo! 😊 Un asesor te contactará en breve para confirmar si tenemos cobertura de reparto en tu zona 🚚';
   }
 
   // CP foráneo — verificar cantidad antes de cerrar
