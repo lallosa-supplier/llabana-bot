@@ -896,7 +896,6 @@ async function handleAskingName(phone, message, session) {
 
     // Solo una palabra → guardar como parcial y pedir apellido
     // Resetear nameAttempts — el contador de apellido es independiente del de nombre
-    const first = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
     await sessionManager.updateSession(phone, {
       tempData: { ...session.tempData, nombreParcial: nombre, nameAttempts: 0 },
     });
