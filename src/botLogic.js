@@ -15,7 +15,7 @@ const sessionManager    = require('./sessionManager');
 const sheetsService     = require('./sheetsService');
 const claudeService     = require('./claudeService');
 const twilioService     = require('./twilioService');
-const shopifyService    = require('./shopifyService');
+// const shopifyService    = require('./shopifyService'); // unused
 const horarioService    = require('./horarioService');
 const colaEscalaciones  = require('./colaEscalaciones');
 
@@ -1000,6 +1000,28 @@ async function handleActive(phone, message, session) {
         return respClaude;
       }
     } catch { /* ignorar */ }
+
+    // Fuera de horario con pregunta real → responder con Claude pero sin escalar
+    const esDespedidaPendiente = /^(gracias|ok|okey|okay|bien|perfecto|entendido|👍|🙌|hasta luego|bye|adios|adiós|de acuerdo|listo|sale|muchas gracias)$/i.test(message.trim());
+    if (esDespedidaPendiente) {
+      return '¡Hasta luego! Te contactaremos a primera hora 🙌';
+    }
+
+    // Guardar mensaje en historial y llamar a Claude
+    try {
+      const respClaude = await claudeService.chat(
+        session.conversationHistory || [],
+        session.customer
+      );
+      if (respClaude && !respClaude.includes('ESCALAR_A_WIG')) {
+        session.conversationHistory.push({ role: 'assistant', content: respClaude });
+        await sessionManager.updateSession(phone, { conversationHistory: session.conversationHistory });
+        sheetsService.appendConversationLog(phone, message, respClaude).catch(() => {});
+        return respClaude;
+      }
+    } catch (err) {
+      console.error('claudeService error en escalacionPendiente:', err.message);
+    }
     return '¡Con gusto! 🙌 El asesor te contactará cuando inicien operaciones por aquí mismo.';
   }
 
