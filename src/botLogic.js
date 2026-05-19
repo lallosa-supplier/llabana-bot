@@ -778,6 +778,15 @@ const RESPUESTA_FLUJO = /^(s[ií],?|no,?|ok,?|claro,?|desde\s+\w+|estoy\s+en|soy
 const NO_ES_NOMBRE = /^(saber|buscar|cotizar|preguntar|consultar|verificar|checar|querer|necesitar|tiene[n]?(\s|$)|es\s+(saber|que|para|sobre|correcto|as[ií]|en\s)|para\s+(saber|este|ese|el|la|los|las|un|una)\s|quiero\s+saber|quisiera|necesito|me\s+gustar[ií]a|tiene\s+costo|tiene\s+precio|tiene\s+env[ií]o|cuanto\s+cuesta|si\s+tiene|si\s+manejan|de\s+el\s+estado|del\s+estado|en\s+el\s+estado|en\s+\w|estoy\s+en\s|vengo\s+de\s|soy\s+de\s|as[ií](\s+(es|est[aá]|lo)|$)|correcto|exacto|ok(\s|$)|alcald[ií]a|municipio|colonia|delegaci[oó]n|rancho|ejido|comunidad|fraccionamiento|barrio|pueblo|villa|ciudad|M[eé]xico|Quer[eé]taro|Oaxaca|Puebla|Jalisco|Veracruz|Chiapas|Guerrero|Sonora|Chihuahua|Sinaloa|Tamaulipas|Coahuila|Hidalgo|Tabasco|Campeche|Yucat[aá]n|Quintana\s+Roo|Monterrey|Guadalajara|CDMX|Ciudad\s+de\s+M[eé]xico|por\s|para\s|con\s|sin\s|ante\s|bajo\s|desde\s|entre\s|hacia\s|hasta\s|seg[uú]n\s|sobre\s|tras\s|mediante\s|durante\s|excepto\s|salvo\s|incluso\s|aunque\s|si\s+me\s+|si\s+tiene|si\s+manejan|d[oó]nde|cu[aá]ndo|cu[aá]nto|c[oó]mo\s|qu[eé]\s+precio)/i;
 
 async function handleAskingName(phone, message, session) {
+  const intent = session.tempData?.intentPrevio;
+  if (isDistribuidor(intent || message)) {
+    await sessionManager.updateSession(phone, {
+      flowState: 'active',
+      tempData: { ...session.tempData, infoDistribuidor: { esperando: 'ciudad' } },
+    });
+    return '¡Qué interesante! Para orientarte mejor, ¿en qué ciudad o municipio estás? 📍';
+  }
+
   // Si ya tenemos un nombre parcial guardado, el cliente está dando el apellido
   const nombreParcial = session.tempData?.nombreParcial;
   if (nombreParcial) {
@@ -1232,6 +1241,10 @@ async function handleActive(phone, message, session) {
     const updatedInfo = { ...infoDistribuidor };
 
     if (infoDistribuidor.esperando === 'ciudad') {
+      const posibleCP = /^\d{4,5}$/.test(message.trim());
+      if (posibleCP) {
+        return '¿En qué ciudad o municipio estás? 📍 Por ejemplo: Guadalajara, Monterrey, Mérida...';
+      }
       updatedInfo.ciudad = message.trim();
       updatedInfo.esperando = 'tipoNegocio';
       await sessionManager.updateSession(phone, {
