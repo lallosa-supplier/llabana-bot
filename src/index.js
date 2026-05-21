@@ -28,8 +28,30 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 // ── Rutas ────────────────────────────────────────────────────────────────────
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'llabana-bot', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+  const checks = {
+    status: 'ok',
+    service: 'llabana-bot',
+    timestamp: new Date().toISOString(),
+    redis: 'unknown',
+    uptime: Math.floor(process.uptime()) + 's',
+  };
+
+  try {
+    const redis = getRedisClient();
+    if (redis) {
+      await redis.ping();
+      checks.redis = 'ok';
+    } else {
+      checks.redis = 'fallback_memory';
+    }
+  } catch (err) {
+    checks.redis = 'error';
+    checks.status = 'degraded';
+  }
+
+  const httpStatus = checks.status === 'ok' || checks.status === 'degraded' ? 200 : 503;
+  res.status(httpStatus).json(checks);
 });
 
 app.post('/webhook/whatsapp', webhookHandler);
