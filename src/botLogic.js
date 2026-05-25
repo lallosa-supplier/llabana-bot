@@ -801,9 +801,12 @@ async function handleAskingName(phone, message, session) {
       .trim();
 
     if (posibleApellido.length > 2 && !/^\d+$/.test(posibleApellido)) {
-      const apellidoLimpio = posibleApellido.charAt(0).toUpperCase() +
-        posibleApellido.slice(1).toLowerCase();
-      const nombreCompleto = `${nombreParcial} ${apellidoLimpio}`;
+      // Si el cliente ya incluyó el nombre (ej: repitió "Juan García" cuando se le pidió el apellido)
+      const yaIncluyeNombre = posibleApellido.toLowerCase().startsWith(nombreParcial.toLowerCase());
+      const textoParaUsar = yaIncluyeNombre ? posibleApellido : `${nombreParcial} ${posibleApellido}`;
+
+      const nombreLimpio = sheetsService.limpiarNombre(textoParaUsar) || textoParaUsar;
+      const nombreCompleto = nombreLimpio.charAt(0).toUpperCase() + nombreLimpio.slice(1);
 
       await sessionManager.updateSession(phone, {
         flowState: 'confirming_name',
