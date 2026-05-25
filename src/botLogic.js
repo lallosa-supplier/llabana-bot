@@ -669,8 +669,8 @@ async function handleAskingMexico(phone, message, session) {
       });
       const firstName = primerNombre(session.tempData?.name || '');
       return firstName
-        ? `¡Perfecto, ${firstName}! Estás en zona de Estado de México 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`
-        : `¡Perfecto! Estás en zona de Estado de México 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`;
+        ? `¡Perfecto, ${firstName}! Estás en zona de ${stateDetectado} 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`
+        : `¡Perfecto! Estás en zona de ${stateDetectado} 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`;
     }
 
     await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
@@ -1167,8 +1167,8 @@ async function handleActive(phone, message, session) {
         });
         const firstName = primerNombre(session.customer?.name || '');
         return firstName
-          ? `¡Perfecto, ${firstName}! Estás en zona de Estado de México 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`
-          : `¡Perfecto! Estás en zona de Estado de México 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`;
+          ? `¡Perfecto, ${firstName}! Estás en zona de ${zone} 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`
+          : `¡Perfecto! Estás en zona de ${zone} 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`;
       }
 
       await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
@@ -1324,10 +1324,18 @@ async function handleActive(phone, message, session) {
 
   if (preguntaCobertura) {
     const ciudadBuscar = message
-      .replace(/\b(tienen?|hay|tienda|sucursal|en|la|el|de|por|distribuidora?|punto|venta|local|si|no|existe|cerca|alguna?|cobertura|puedo|pasar|recoger|ir|busco|buscar|quisiera|saber|estado\s+de|del\s+estado)\b/gi, ' ')
+      .replace(/\b(tienen?|hay|tienda|sucursal|en|la|el|de|por|distribuidora?|punto|venta|local|si|no|existe|cerca|alguna?|cobertura|puedo|pasar|recoger|ir|busco|buscar|quisiera|saber|estado\s+de|del\s+estado|donde|dónde|física|fisico|serca|cerca|mi\s+zona|su\s+zona)\b/gi, ' ')
       .replace(/[¿?¡!,]/g, '')
       .replace(/\s+/g, ' ')
       .trim();
+
+    // Si después de limpiar no queda ciudad válida → preguntar
+    const ciudadValida = ciudadBuscar.length > 3 &&
+      !/^(zona|área|lugar|region|región|aquí|aca|acá)$/i.test(ciudadBuscar);
+
+    if (!ciudadValida) {
+      return '¿En qué ciudad o municipio estás? Te confirmo si tenemos cobertura cerca 😊';
+    }
 
     if (ciudadBuscar.length > 2) {
       try {
@@ -2085,11 +2093,19 @@ async function handleConfirmingName(phone, message, session) {
     const palabrasPendiente = namePendiente.split(' ').filter(Boolean);
     const palabrasNuevo = nombreNuevo.split(' ').filter(Boolean);
 
-    // Si el pendiente tiene 2+ palabras y el nuevo tiene 1 sola →
-    // probablemente está corrigiendo solo el apellido
-    let nombreFinal = nombreNuevo;
-    if (palabrasPendiente.length >= 2 && palabrasNuevo.length === 1) {
-      nombreFinal = `${palabrasPendiente[0]} ${palabrasNuevo[0]}`;
+    let nombreFinal;
+    if (palabrasNuevo.length >= 2) {
+      // El cliente ya dio nombre completo → usar directamente sin combinar
+      nombreFinal = nombreNuevo;
+    } else if (palabrasPendiente.length >= 2 && palabrasNuevo.length === 1) {
+      // Una palabra: combinar primer nombre + nuevo apellido, salvo que repita el primer nombre
+      if (palabrasNuevo[0].toLowerCase() !== palabrasPendiente[0].toLowerCase()) {
+        nombreFinal = `${palabrasPendiente[0]} ${palabrasNuevo[0]}`;
+      } else {
+        nombreFinal = nombreNuevo; // el cliente está corrigiendo el primer nombre
+      }
+    } else {
+      nombreFinal = `${palabrasPendiente[0] || ''} ${palabrasNuevo[0]}`.trim();
     }
 
     const first = primerNombre(nombreFinal);
