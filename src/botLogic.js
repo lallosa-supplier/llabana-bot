@@ -132,6 +132,12 @@ const DISTRIBUIDOR_PATTERNS = [
   /\bfranquicia/i, /\brevendedor/i, /\bpunto\s+de\s+venta\s+propio/i,
   /\bquiero\s+vender\b/i, /\bcomercializar/i, /\bdistribución\s+exclusiva/i,
   /\bagente\s+de\s+ventas/i, /\bconvertirme\s+en\s+distribuidor/i,
+  /\bveterinaria\b/i,
+  /\bprecio(s)?\s+(para|de)\s+(veterinaria|tienda|negocio|reventa)/i,
+  /\bventa\s+en\s+(veterinaria|tienda|negocio)/i,
+  /\bpara\s+vender\b/i,
+  /\brevender\b/i,
+  /\bpunto\s+de\s+venta\b/i,
 ];
 
 function isDistribuidor(text) {
@@ -1315,7 +1321,7 @@ async function handleActive(phone, message, session) {
 
   if (preguntaCobertura) {
     const ciudadBuscar = message
-      .replace(/\b(tienen?|hay|tienda|sucursal|en|la|el|de|por|distribuidora?|punto|venta|local|si|no|existe|cerca|alguna?|cobertura|puedo|pasar|recoger|ir)\b/gi, ' ')
+      .replace(/\b(tienen?|hay|tienda|sucursal|en|la|el|de|por|distribuidora?|punto|venta|local|si|no|existe|cerca|alguna?|cobertura|puedo|pasar|recoger|ir|busco|buscar|quisiera|saber|estado\s+de|del\s+estado)\b/gi, ' ')
       .replace(/[¿?¡!,]/g, '')
       .replace(/\s+/g, ' ')
       .trim();
