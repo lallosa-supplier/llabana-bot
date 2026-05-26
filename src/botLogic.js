@@ -1062,6 +1062,16 @@ async function handleActive(phone, message, session) {
     return 'Ahorita te conecto con un asesor 🙌';
   }
 
+  // Solicitud corporativa/B2B — escala directo sin pedir CP
+  const esSolicitudCorporativa = /\b(contacto|área|departamento|gerente|director|encargado)\s+(de\s+)?(compras?|marketing|ventas?|comercial|administración|finanzas?)\b/i.test(message) ||
+    /\b(hablar|comunicarme|contactar)\s+(con\s+)?(alguien|una\s+persona|el\s+área|el\s+departamento)\s+(de\s+)?(compras?|marketing|ventas?)\b/i.test(message);
+
+  if (esSolicitudCorporativa) {
+    await notifyWig(phone, session, `Solicitud corporativa/B2B: "${message.substring(0, 100)}"`);
+    sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
+    return 'Ahorita te conecto con la persona indicada 🙌';
+  }
+
   // Distribuidor — recolectar info antes de escalar
   if (isDistribuidor(message)) {
     await sessionManager.updateSession(phone, {
