@@ -69,6 +69,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .badge-carrito      { background: var(--gold-p); color: #7B6000; border: 1px solid var(--gold); }
 .badge-lead         { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
 .badge-escalado     { background: var(--orange-p); color: var(--orange); border: 1px solid #FFCC02; }
+.badge-proveedor    { background: #E8F5E9; color: #2E7D32; border: 1px solid #2E7D32; }
 .badge-solo-cuenta  { background: var(--blue-p); color: var(--blue); border: 1px solid var(--blue); }
 .panel-right { display: flex; flex-direction: column; background: var(--bg); overflow: hidden; }
 .chat-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; }
@@ -106,6 +107,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
   .back-btn { display: flex !important; }
 }
 .back-btn { display: none; align-items: center; gap: 5px; background: none; border: none; color: var(--green); font-family: var(--sans); font-size: 13px; cursor: pointer; margin-right: 8px; }
+.sin-nombre { color: var(--muted); font-style: italic; font-weight: 400; }
 </style>
 </head>
 <body>
@@ -117,6 +119,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
   </div>
   <div class="topbar-right">
     <span class="counter" id="counter"></span>
+    <span class="counter" id="last-update" style="opacity:0.4"></span>
     <button class="btn-refresh" onclick="loadData()">↻ Actualizar</button>
   </div>
 </div>
@@ -130,6 +133,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
         <button class="filter-btn" data-filter="escalados" onclick="setFilter('escalados',this)">🚨 Escalados</button>
         <button class="filter-btn" data-filter="mayoreo" onclick="setFilter('mayoreo',this)">💼 Mayoreo</button>
         <button class="filter-btn" data-filter="compradores" onclick="setFilter('compradores',this)">✅ Compradores</button>
+        <button class="filter-btn" data-filter="proveedores" onclick="setFilter('proveedores',this)">🏭 Proveedores</button>
       </div>
     </div>
     <div class="conv-list" id="conv-list">
@@ -151,6 +155,7 @@ let all = [], selI = null, activeFilter = 'todos';
 
 function segmentoBadge(tx) {
   const t = (tx || '').toLowerCase();
+  if (t.includes('proveedor potencial')) return '<span class="badge badge-proveedor">🏭 Proveedor</span>';
   if (t.includes('recompra'))           return '<span class="badge badge-recompra">Recompra</span>';
   if (t.includes('comprador'))          return '<span class="badge badge-comprador">Comprador</span>';
   if (t.includes('mayoreo'))            return '<span class="badge badge-mayoreo">Mayoreo</span>';
@@ -168,6 +173,19 @@ function esMayoreo(tx) {
   return /mayoreo|distribuidor|grandes? cantidad|reventa|por mayor/i.test(tx || '');
 }
 
+function esProveedor(tx) {
+  return /proveedor potencial/i.test(tx || '');
+}
+
+function parseFechaMs(f) {
+  if (!f) return 0;
+  const [datePart, timePart] = f.split(', ');
+  if (!datePart || !timePart) return 0;
+  const [dd, mm, yyyy] = datePart.split('/');
+  const [hh, min] = timePart.split(':');
+  return new Date(yyyy, mm-1, dd, hh, min).getTime();
+}
+
 function setFilter(f, btn) {
   activeFilter = f;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -180,6 +198,7 @@ function applyFilter(convs) {
   if (activeFilter === 'escalados')   return convs.filter(c => esEscalado(c.transcript));
   if (activeFilter === 'mayoreo')     return convs.filter(c => esMayoreo(c.transcript));
   if (activeFilter === 'compradores') return convs.filter(c => /comprador|recompra/i.test(c.transcript));
+  if (activeFilter === 'proveedores') return convs.filter(c => esProveedor(c.transcript));
   return convs;
 }
 
@@ -191,6 +210,8 @@ async function loadData() {
     all = await r.json();
     filter();
     document.getElementById('counter').textContent = all.length + ' chats';
+    const now = new Date().toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
+    document.getElementById('last-update').textContent = 'Actualizado ' + now;
   } catch(e) {
     document.getElementById('conv-list').innerHTML =
       `<div class="empty"><div class="empty-title">Error al cargar</div><div class="empty-sub">${e.message}</div></div>`;
@@ -216,10 +237,13 @@ function renderList(convs) {
     const segBadge = segmentoBadge(c.transcript);
     const escBadge = escalado ? '<span class="badge badge-escalado">🚨 Escalado</span>' : '';
     const mayBadge = mayoreo && !escalado ? '<span class="badge badge-mayoreo">💼 Mayoreo</span>' : '';
+    const fechaMs = parseFechaMs(c.fecha);
+    const esReciente = fechaMs && (Date.now() - fechaMs < 2 * 60 * 60 * 1000);
+    const newDot = escalado && esReciente ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#43A047;margin-left:5px;animation:pulse 2s infinite"></span>' : '';
     return `
       <div class="conv-item ${selI===i?'sel':''}" onclick="openConv(${i},this)">
         <div class="ci-top">
-          <span class="ci-name">${esc(c.nombre||'Sin nombre')}</span>
+          <span class="ci-name ${!c.nombre ? 'sin-nombre' : ''}">${esc(c.nombre||'Sin nombre')}${newDot}</span>
           <span class="ci-date">${esc(c.fecha)}</span>
         </div>
         <div class="ci-phone">${esc(c.telefono)}</div>
