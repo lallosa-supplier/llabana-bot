@@ -177,6 +177,17 @@ function esProveedor(tx) {
   return /proveedor potencial/i.test(tx || '');
 }
 
+function extractNombreFromTranscript(tx) {
+  if (!tx) return '';
+  // Buscar confirmación de nombre: "¿tu nombre es *X*?"
+  const confirmMatch = tx.match(/tu nombre es \*([^*]+)\*/i);
+  if (confirmMatch) return confirmMatch[1].trim();
+  // Buscar "Mucho gusto, X!" o "¡Qué bueno que nos escribes, X!"
+  const gustoMatch = tx.match(/(?:Mucho gusto|nos escribes),\s*([^!😊🌾\n]+)/i);
+  if (gustoMatch) return gustoMatch[1].trim();
+  return '';
+}
+
 function parseFechaMs(f) {
   if (!f) return 0;
   const [datePart, timePart] = f.split(', ');
@@ -220,7 +231,7 @@ async function loadData() {
 
 function filter() {
   const q = document.getElementById('search').value.toLowerCase();
-  let r = q ? all.filter(c => (c.nombre||'').toLowerCase().includes(q) || (c.telefono||'').includes(q)) : all;
+  let r = q ? all.filter(c => (c.nombre||extractNombreFromTranscript(c.transcript)||'').toLowerCase().includes(q) || (c.telefono||'').includes(q)) : all;
   r = applyFilter(r);
   renderList(r);
 }
@@ -240,10 +251,12 @@ function renderList(convs) {
     const fechaMs = parseFechaMs(c.fecha);
     const esReciente = fechaMs && (Date.now() - fechaMs < 2 * 60 * 60 * 1000);
     const newDot = escalado && esReciente ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#43A047;margin-left:5px;animation:pulse 2s infinite"></span>' : '';
+    const nombre = c.nombre || extractNombreFromTranscript(c.transcript) || 'Sin nombre';
+    const nombreReal = c.nombre || extractNombreFromTranscript(c.transcript) || '';
     return `
       <div class="conv-item ${selI===i?'sel':''}" onclick="openConv(${i},this)">
         <div class="ci-top">
-          <span class="ci-name ${!c.nombre ? 'sin-nombre' : ''}">${esc(c.nombre||'Sin nombre')}${newDot}</span>
+          <span class="ci-name ${!nombreReal ? 'sin-nombre' : ''}">${esc(nombre)}${newDot}</span>
           <span class="ci-date">${esc(c.fecha)}</span>
         </div>
         <div class="ci-phone">${esc(c.telefono)}</div>
@@ -261,14 +274,15 @@ function openConv(i, el) {
   const pr   = document.getElementById('panel-right');
   pr.classList.add('open');
   const escalInfo = detectarEscalacion(c.transcript || '');
-  const inicial   = (c.nombre || 'S').trim().charAt(0).toUpperCase();
+  const nombreConv = c.nombre || extractNombreFromTranscript(c.transcript) || 'Sin nombre';
+  const inicial   = nombreConv.trim().charAt(0).toUpperCase();
   pr.innerHTML = `
     <div class="chat-header">
       <div class="ch-left">
         <button class="back-btn" onclick="document.getElementById('panel-right').classList.remove('open')">← Volver</button>
         <div class="ch-avatar">${esc(inicial)}</div>
         <div>
-          <div class="ch-name">${esc(c.nombre||'Sin nombre')}</div>
+          <div class="ch-name">${esc(nombreConv)}</div>
           <div class="ch-meta">${esc(c.telefono)} · ${esc(c.fecha)}</div>
         </div>
       </div>

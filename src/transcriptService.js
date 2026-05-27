@@ -112,12 +112,14 @@ async function updateTranscript(telefono, nombre, transcript) {
 
   if (rowIndex !== -1) {
     const sheetRow = rowIndex + 2; // +1 por header, +1 por base-1
+    // Usar el nombre que ya existe en Sheets si el nuevo llega vacío
+    const nombreFinal = nombre || rows[rowIndex][1] || '';
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SHEET}!A${sheetRow}:D${sheetRow}`,
       valueInputOption: 'RAW',
       requestBody: {
-        values: [[fecha, nombre || rows[rowIndex][1] || '', rows[rowIndex][2] || '', truncarTranscript(transcript)]]
+        values: [[fecha, nombreFinal, rows[rowIndex][2] || '', truncarTranscript(transcript)]]
       }
     });
   } else {
