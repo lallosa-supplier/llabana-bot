@@ -144,6 +144,26 @@ function isDistribuidor(text) {
   return DISTRIBUIDOR_PATTERNS.some(re => re.test(text));
 }
 
+const PROVEEDOR_PATTERNS = [
+  /\bser\s+proveedor/i,
+  /\bquiero\s+proveer/i,
+  /\bsoy\s+proveedor/i,
+  /\bvenderle[s]?\s+(a\s+)?(llabana|ustedes)/i,
+  /\bofrecer(les?)?\s+(mis\s+)?(productos?|servicios?|insumos?|materia)/i,
+  /\bproveedor\s+de\s+llabana/i,
+  /\bcontacto\s+de\s+compras/i,
+  /\bdepartamento\s+de\s+compras/i,
+  /\bquiero\s+venderles/i,
+  /\bsoy\s+fabricante/i,
+  /\bproducimos?\b/i,
+  /\bimportador\b/i,
+  /\bexportador\b/i,
+];
+
+function isProveedor(text) {
+  return PROVEEDOR_PATTERNS.some(re => re.test(text));
+}
+
 function isRequestingHuman(text) {
   return HUMAN_REQUEST_PATTERNS.some(re => re.test(text.trim()));
 }
@@ -785,6 +805,16 @@ const NO_ES_NOMBRE = /^(saber|buscar|cotizar|preguntar|consultar|verificar|checa
 
 async function handleAskingName(phone, message, session) {
   const intent = session.tempData?.intentPrevio;
+  if (isProveedor(intent || message)) {
+    await sessionManager.updateSession(phone, {
+      flowState: 'active',
+      tempData: {
+        ...session.tempData,
+        infoProveedor: { esperando: 'producto' }
+      },
+    });
+    return '¡Gracias por tu interés en ser proveedor de Llabana! 😊\n\n¿Qué producto o servicio ofreces?';
+  }
   if (isDistribuidor(intent || message)) {
     await sessionManager.updateSession(phone, {
       flowState: 'active',
@@ -1072,6 +1102,90 @@ async function handleActive(phone, message, session) {
     return 'Ahorita te conecto con la persona indicada 🙌';
   }
 
+  // Detectar si es proveedor potencial
+  if (isProveedor(message)) {
+    await sessionManager.updateSession(phone, {
+      flowState: 'active',
+      tempData: {
+        ...session.tempData,
+        infoProveedor: { esperando: 'producto' }
+      },
+    });
+    return '¡Gracias por tu interés en ser proveedor de Llabana! 😊\n\n¿Qué producto o servicio ofreces?';
+  }
+
+  // Detectar respuestas al flujo de proveedor
+  const infoProveedor = session.tempData?.infoProveedor;
+  if (infoProveedor?.esperando) {
+    const updatedInfo = { ...infoProveedor };
+
+    if (infoProveedor.esperando === 'producto') {
+      updatedInfo.producto = message.trim();
+      updatedInfo.esperando = 'empresa';
+      await sessionManager.updateSession(phone, {
+        tempData: { ...session.tempData, infoProveedor: updatedInfo },
+      });
+      return '¡Interesante! ¿De qué empresa o negocio nos escribes? 🏢';
+    }
+
+    if (infoProveedor.esperando === 'empresa') {
+      updatedInfo.empresa = message.trim();
+      updatedInfo.esperando = 'contacto';
+      await sessionManager.updateSession(phone, {
+        tempData: { ...session.tempData, infoProveedor: updatedInfo },
+      });
+      return '¿Cuál es tu puesto o rol en la empresa? 👤';
+    }
+
+    if (infoProveedor.esperando === 'contacto') {
+      updatedInfo.puesto = message.trim();
+      updatedInfo.esperando = 'email';
+      await sessionManager.updateSession(phone, {
+        tempData: { ...session.tempData, infoProveedor: updatedInfo },
+      });
+      return '¿Tienes un email o teléfono de oficina donde podamos contactarte? 📧';
+    }
+
+    if (infoProveedor.esperando === 'email') {
+      updatedInfo.contactoAdicional = message.trim();
+
+      // Construir resumen para Wig
+      const nombre = session.customer?.name || session.tempData?.name || 'Sin nombre';
+      const tel = phone.replace('whatsapp:', '');
+      const resumen =
+        `🏭 *PROVEEDOR POTENCIAL*\n\n` +
+        `👤 Nombre: ${nombre}\n` +
+        `📱 Tel: ${tel}\n` +
+        `📦 Ofrece: ${updatedInfo.producto}\n` +
+        `🏢 Empresa: ${updatedInfo.empresa}\n` +
+        `💼 Puesto: ${updatedInfo.puesto}\n` +
+        `📧 Contacto: ${updatedInfo.contactoAdicional}`;
+
+      // Notificar a Wig con toda la info
+      const wigNumber = process.env.WIG_WHATSAPP_NUMBER;
+      if (wigNumber) {
+        try {
+          const { sendMessage } = require('./twilioService');
+          await sendMessage(wigNumber, resumen);
+          console.log(`📲 Proveedor notificado a Wig: ${nombre} | ${updatedInfo.empresa}`);
+        } catch (err) {
+          console.error('Error notificando proveedor a Wig:', err.message);
+        }
+      }
+
+      // NO registrar en Sheets — limpiar sesión
+      await sessionManager.updateSession(phone, {
+        flowState: 'active',
+        tempData: {
+          ...session.tempData,
+          infoProveedor: undefined
+        },
+      });
+
+      return '¡Perfecto! Le pasamos tu información al equipo de compras de Llabana 🙌\nEn breve te contactarán para seguir la conversación. ¡Gracias por tu interés!';
+    }
+  }
+
   // Distribuidor — recolectar info antes de escalar
   if (isDistribuidor(message)) {
     await sessionManager.updateSession(phone, {
@@ -1330,6 +1444,20 @@ async function handleActive(phone, message, session) {
   }
 
   // Detectar pregunta de cobertura/sucursal en una ciudad
+  // Detectar si es pregunta de recoger sin ciudad — escalar a Wig directamente
+  const quiereRecoger = /\b(pasar\s+a\s+recoger|ir\s+a\s+recoger|recoger\s+en|recoger\s+personalmente|pasar\s+por|ir\s+por\s+el|recogerlo\s+yo)\b/i.test(message);
+
+  if (quiereRecoger) {
+    // Si tiene CP o ciudad en tempData → escalar a Wig para coordinar
+    if (session.customer?.cp || session.tempData?.ciudad) {
+      await notifyWig(phone, session, `Cliente quiere pasar a recoger su pedido`);
+      sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
+      return '¡Claro que puedes pasar a recoger! 😊 Un asesor te da los detalles de la ubicación más cercana para coordinar.';
+    }
+    // Si no tiene ubicación → preguntar ciudad antes
+    return '¡Claro que puedes pasar a recoger! 😊 ¿En qué ciudad estás? Te confirmo si hay cobertura cerca.';
+  }
+
   const preguntaCobertura = /\b(sucursal|tienda|distribuidora?|punto\s+de\s+venta|local|cobertura|recog[e]r|pasar\s+por|ir\s+por|recoger)\b/i.test(message);
 
   if (preguntaCobertura) {
