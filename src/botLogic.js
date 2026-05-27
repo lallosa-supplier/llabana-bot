@@ -966,6 +966,48 @@ async function handleAskingName(phone, message, session) {
   return '¿En qué te puedo ayudar? 😊';
 }
 
+// ── Clasificador de intención (antes de flujo libre) ─────────────────────────
+
+async function clasificarIntencion(phone, intent, session) {
+  // Proveedor → flujo de recolección sin CP
+  if (isProveedor(intent)) {
+    await sessionManager.updateSession(phone, {
+      flowState: 'active',
+      tempData: { ...session.tempData, infoProveedor: { esperando: 'producto' }, intentPrevio: undefined },
+    });
+    return '¡Gracias por tu interés en ser proveedor de Llabana! 😊\n\n¿Qué producto o servicio ofreces?';
+  }
+
+  // Distribuidor → flujo de recolección sin CP
+  if (isDistribuidor(intent)) {
+    await sessionManager.updateSession(phone, {
+      flowState: 'active',
+      tempData: { ...session.tempData, infoDistribuidor: { esperando: 'ciudad' }, intentPrevio: undefined },
+    });
+    return '¡Qué interesante! Para orientarte mejor, ¿en qué ciudad o municipio estás? 📍';
+  }
+
+  // Solicitud corporativa → escalar sin CP
+  const esSolicitudCorporativa = /\b(contacto|área|departamento|gerente|director|encargado)\s+(de\s+)?(compras?|marketing|ventas?|comercial)\b/i.test(intent);
+  if (esSolicitudCorporativa) {
+    await notifyWig(phone, session, `Solicitud corporativa desde intent: "${intent.substring(0, 80)}"`);
+    await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig', tempData: { ...session.tempData, intentPrevio: undefined } });
+    return 'Ahorita te conecto con la persona indicada 🙌';
+  }
+
+  // Queja o problema → escalar urgente sin CP
+  const esQueja = /\b(queja|reclamo|problema\s+con\s+mi\s+pedido|no\s+llegó|llegó\s+mal|llegó\s+dañado|no\s+me\s+han\s+entregado)\b/i.test(intent);
+  if (esQueja) {
+    await notifyWig(phone, session, `Queja desde intent: "${intent.substring(0, 80)}"`);
+    await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig', tempData: { ...session.tempData, intentPrevio: undefined } });
+    return 'Lamento mucho eso 😔 Ahorita te conecto con un asesor para resolverlo cuanto antes.';
+  }
+
+  // Compra o info general → flujo normal con CP
+  const updatedSession = await sessionManager.getSession(phone);
+  return handleActive(phone, intent, updatedSession);
+}
+
 // ── Conversación libre con Claude ─────────────────────────────────────────────
 
 const FLOW_PATTERNS = /(primera\s*ve[zs]|es\s*mi\s*primera|nunca\s*he|no\s*he|soy\s*nuev[oa]|no,?\s*primera)/i;
@@ -2205,12 +2247,11 @@ async function handleConfirmingName(phone, message, session) {
 
     const intentPrevio = session.tempData?.intentPrevio;
     if (intentPrevio) {
-      // Limpiar intentPrevio ANTES de llamar a handleActive para evitar loops
       await sessionManager.updateSession(phone, {
         tempData: { ...session.tempData, intentPrevio: undefined, namePendiente: undefined },
       });
       const updatedSession = await sessionManager.getSession(phone);
-      const respuesta = await handleActive(phone, intentPrevio, updatedSession);
+      const respuesta = await clasificarIntencion(phone, intentPrevio, updatedSession);
       return `¡Mucho gusto, ${first}! 😊\n\n${respuesta}`;
     }
     return pick([
@@ -2256,7 +2297,7 @@ async function handleConfirmingName(phone, message, session) {
         tempData: { ...session.tempData, intentPrevio: undefined, namePendiente: undefined },
       });
       const updatedSession = await sessionManager.getSession(phone);
-      const respuesta = await handleActive(phone, intentPrevio, updatedSession);
+      const respuesta = await clasificarIntencion(phone, intentPrevio, updatedSession);
       return `¡Mucho gusto, ${first}! 😊\n\n${respuesta}`;
     }
     return pick([
