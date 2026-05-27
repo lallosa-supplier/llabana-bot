@@ -1130,23 +1130,23 @@ async function handleActive(phone, message, session) {
 
     if (infoProveedor.esperando === 'empresa') {
       updatedInfo.empresa = message.trim();
-      updatedInfo.esperando = 'contacto';
+      updatedInfo.esperando = 'puesto';
       await sessionManager.updateSession(phone, {
         tempData: { ...session.tempData, infoProveedor: updatedInfo },
       });
       return '¿Cuál es tu puesto o rol en la empresa? 👤';
     }
 
-    if (infoProveedor.esperando === 'contacto') {
+    if (infoProveedor.esperando === 'puesto') {
       updatedInfo.puesto = message.trim();
-      updatedInfo.esperando = 'email';
+      updatedInfo.esperando = 'contacto';
       await sessionManager.updateSession(phone, {
         tempData: { ...session.tempData, infoProveedor: updatedInfo },
       });
       return '¿Tienes un email o teléfono de oficina donde podamos contactarte? 📧';
     }
 
-    if (infoProveedor.esperando === 'email') {
+    if (infoProveedor.esperando === 'contacto') {
       updatedInfo.contactoAdicional = message.trim();
 
       // Construir resumen para Wig
@@ -1173,16 +1173,11 @@ async function handleActive(phone, message, session) {
         }
       }
 
-      // NO registrar en Sheets — limpiar sesión
       await sessionManager.updateSession(phone, {
         flowState: 'active',
-        tempData: {
-          ...session.tempData,
-          infoProveedor: undefined
-        },
+        tempData: { ...session.tempData, infoProveedor: undefined },
       });
-
-      return '¡Perfecto! Le pasamos tu información al equipo de compras de Llabana 🙌\nEn breve te contactarán para seguir la conversación. ¡Gracias por tu interés!';
+      return '¡Perfecto! Le pasamos tu información al equipo de compras de Llabana 🙌\nEn breve te contactarán. ¡Gracias por tu interés!';
     }
   }
 
@@ -1443,13 +1438,12 @@ async function handleActive(phone, message, session) {
     return `¡Perfecto! Con esa información un asesor especializado te contactará en breve para platicar sobre las opciones 😊`;
   }
 
-  // Detectar pregunta de cobertura/sucursal en una ciudad
   // Detectar si es pregunta de recoger sin ciudad — escalar a Wig directamente
-  const quiereRecoger = /\b(pasar\s+a\s+recoger|ir\s+a\s+recoger|recoger\s+en|recoger\s+personalmente|pasar\s+por|ir\s+por\s+el|recogerlo\s+yo)\b/i.test(message);
+  const quiereRecoger = /\b(pasar\s+a\s+recoger|ir\s+a\s+recoger|recoger\s+en|recoger\s+personalmente|pasar\s+por|ir\s+por\s+el|recogerlo\s+yo|pasar\s+a\s+su\s+ubicaci[oó]n|recoger\s+a\s+su\s+ubicaci[oó]n)\b/i.test(message);
 
   if (quiereRecoger) {
     // Si tiene CP o ciudad en tempData → escalar a Wig para coordinar
-    if (session.customer?.cp || session.tempData?.ciudad) {
+    if (session.customer?.cp || session.tempData?.cp) {
       await notifyWig(phone, session, `Cliente quiere pasar a recoger su pedido`);
       sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
       return '¡Claro que puedes pasar a recoger! 😊 Un asesor te da los detalles de la ubicación más cercana para coordinar.';
