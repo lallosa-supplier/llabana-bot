@@ -64,7 +64,18 @@ async function getTranscripts() {
       telefono:   r[2] || '',
       transcript: r[3] || '',
     }))
-    .reverse();
+    .sort((a, b) => {
+      // Parsear fechas en formato "DD/MM/YYYY HH:MM"
+      const parsefecha = (f) => {
+        if (!f) return 0;
+        const [datePart, timePart] = f.split(', ');
+        if (!datePart || !timePart) return 0;
+        const [dd, mm, yyyy] = datePart.split('/');
+        const [hh, min] = timePart.split(':');
+        return new Date(yyyy, mm - 1, dd, hh, min).getTime();
+      };
+      return parsefecha(b.fecha) - parsefecha(a.fecha); // más reciente primero
+    });
 }
 
 async function getExistingTranscript(telefono) {
