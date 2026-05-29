@@ -976,6 +976,22 @@ async function handleAskingName(phone, message, session) {
 // ── Clasificador de intención (antes de flujo libre) ─────────────────────────
 
 async function clasificarIntencion(phone, intent, session) {
+  // Si el intent parece una ubicación, descartarlo
+  const pareceUbicacion = /\b(col\.|colonia|estado\s+de|cdmx|ciudad\s+de\s+m[eé]xico|centro|norte|sur|oriente|poniente)\b/i.test(intent || '') ||
+    /^[A-Z][a-z]+(\s+[A-Z][a-z]+)*,?\s*(México|Jalisco|Veracruz|Puebla|Oaxaca|Querétaro|Sonora|Chihuahua|Sinaloa|Tamaulipas|Coahuila|Hidalgo|Yucatán)$/i.test(intent || '');
+
+  if (pareceUbicacion) {
+    // No usar como intent — dejar que el cliente escriba su consulta real
+    const updatedSession = await sessionManager.getSession(phone);
+    await sessionManager.updateSession(phone, {
+      tempData: { ...updatedSession?.tempData, intentPrevio: undefined },
+    });
+    const nombre = primerNombre(session.customer?.name || session.tempData?.name || '');
+    return nombre
+      ? `¡Mucho gusto, ${nombre}! 😊 ¿En qué te puedo ayudar?`
+      : '¡Mucho gusto! 😊 ¿En qué te puedo ayudar?';
+  }
+
   // Proveedor → flujo de recolección sin CP
   if (isProveedor(intent)) {
     await sessionManager.updateSession(phone, {
