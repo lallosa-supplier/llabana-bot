@@ -226,6 +226,13 @@ async function handleMessage(phone, messageBody) {
     try {
       const yaExtranjero = await redisClient.get(`extranjero:${phone}`);
       if (yaExtranjero) {
+        // Si el cliente indica que puede conseguir dirección → reactivar flujo
+        const puedeTenerDireccion = /puedo\s+conseguir|tengo\s+direcci[oó]n|cuento\s+con|s[ií]\s+tengo|tengo\s+familiar|vivo\s+en|estoy\s+en\s+m[eé]xico|me\s+mudo|direcci[oó]n\s+en\s+m[eé]xico/i.test(messageBody);
+        if (puedeTenerDireccion) {
+          await redisClient.del(`extranjero:${phone}`);
+          await sessionManager.deleteSession(phone);
+          return '¡Perfecto! 😊 Con una dirección en México podemos ayudarte. ¿Nos escribes desde México o tienes una dirección aquí?';
+        }
         return 'Por el momento solo entregamos dentro de México 🙏 Si en algún momento tienes una dirección mexicana, con gusto te ayudamos 🌾';
       }
     } catch { /* ignorar errores de Redis */ }
