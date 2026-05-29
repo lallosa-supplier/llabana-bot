@@ -141,6 +141,12 @@ const DISTRIBUIDOR_PATTERNS = [
 ];
 
 function isDistribuidor(text) {
+  // Excluir preguntas sobre si hay distribuidor/tienda en una ciudad
+  const esPreguntaCobertura = /tienen?\s+(alg[uú]n?\s+)?(distribuidor|tienda|sucursal|punto\s+de\s+venta)\s+(en|cerca|por)/i.test(text) ||
+    /hay\s+(alg[uú]n?\s+)?(distribuidor|tienda|sucursal)\s+(en|cerca|por)/i.test(text) ||
+    /d[oó]nde\s+(tienen?|hay|est[aá]n?)\s+(distribuidor|tienda|sucursal)/i.test(text);
+
+  if (esPreguntaCobertura) return false;
   return DISTRIBUIDOR_PATTERNS.some(re => re.test(text));
 }
 
