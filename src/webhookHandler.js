@@ -79,6 +79,17 @@ async function procesarMensaje(from, body) {
       return;
     }
 
+    // Ignorar mensajes no-comando del número de Wig
+    const wigNumber = process.env.WIG_WHATSAPP_NUMBER;
+    const fromNorm = from.replace(/\D/g, '').slice(-10);
+    const wigNorm = (wigNumber || '').replace(/\D/g, '').slice(-10);
+
+    if (fromNorm === wigNorm) {
+      // Es Wig pero no es un comando reconocido — ignorar silenciosamente
+      console.log(`🔧 [WIG] Mensaje no-comando ignorado: ${body.substring(0, 50)}`);
+      return;
+    }
+
     const reply = await botLogic.handleMessage(from, body);
     await twilioService.sendMessage(from, reply);
 
