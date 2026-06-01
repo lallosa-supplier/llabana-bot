@@ -164,6 +164,15 @@ const PROVEEDOR_PATTERNS = [
   /\bproducimos?\b/i,
   /\bimportador\b/i,
   /\bexportador\b/i,
+  /\bmanufacturer\b/i,
+  /\bsupplier\b/i,
+  /\bfabricante\b/i,
+  /\bwe\s+(are|make|produce|manufacture|supply)/i,
+  /\bresponsable\s+de\s+compras/i,
+  /\bpurchasing\s+(manager|department|contact)/i,
+  /\bcooperation\b/i,
+  /\bpartnership\b/i,
+  /\bbusiness\s+opportunity/i,
 ];
 
 function isProveedor(text) {
@@ -238,6 +247,17 @@ async function handleMessage(phone, messageBody) {
           await redisClient.del(`extranjero:${phone}`);
           await sessionManager.deleteSession(phone);
           return '¡Perfecto! 😊 Con una dirección en México podemos ayudarte. ¿Nos escribes desde México o tienes una dirección aquí?';
+        }
+        // Verificar si es proveedor antes de ignorar
+        if (isProveedor(messageBody)) {
+          await redisClient.del(`extranjero:${phone}`);
+          await sessionManager.deleteSession(phone);
+          const session = await sessionManager.createSession(phone);
+          await sessionManager.updateSession(phone, {
+            flowState: 'active',
+            tempData: { infoProveedor: { esperando: 'producto' } },
+          });
+          return '¡Gracias por tu interés en ser proveedor de Llabana! 😊\n\n¿Qué producto o servicio ofreces?';
         }
         return 'Por el momento solo entregamos dentro de México 🙏 Si en algún momento tienes una dirección mexicana, con gusto te ayudamos 🌾';
       }
@@ -548,6 +568,14 @@ async function handleAskingEntregaMx(phone, message, session) {
   }
 
   if (esNo) {
+    // Verificar si es proveedor potencial antes de cerrar
+    if (isProveedor(message) || isProveedor(session.tempData?.lastMessage || '')) {
+      await sessionManager.updateSession(phone, {
+        flowState: 'active',
+        tempData: { ...session.tempData, infoProveedor: { esperando: 'producto' } },
+      });
+      return '¡Gracias por tu interés en ser proveedor de Llabana! 😊\n\n¿Qué producto o servicio ofreces?';
+    }
     // No tiene dirección en México — cerrar amablemente y marcar para no reiniciar
     await sessionManager.deleteSession(phone);
     const redis = sessionManager.getRedisClient?.();
