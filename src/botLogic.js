@@ -130,6 +130,13 @@ function isOutsideMexico(text) {
 }
 
 function isEscalationProfile(text) {
+  // Excluir preguntas de cobertura ("¿tienen distribuidor en X?"): son clientes
+  // buscando dónde comprar, no perfiles de mayoreo. Misma guarda que isDistribuidor.
+  const esPreguntaCobertura =
+    /tienen?\s+(alg[uú]n?\s+)?(distribuidor|tienda|sucursal|punto\s+de\s+venta)\s+(en|cerca|por)/i.test(text) ||
+    /hay\s+(alg[uú]n?\s+)?(distribuidor|tienda|sucursal)\s+(en|cerca|por)/i.test(text) ||
+    /d[oó]nde\s+(tienen?|hay|est[aá]n?)\s+(distribuidor|tienda|sucursal)/i.test(text);
+  if (esPreguntaCobertura) return false;
   return PatternRegistry.test('ESCALATION_PROFILE', text.trim());
 }
 
