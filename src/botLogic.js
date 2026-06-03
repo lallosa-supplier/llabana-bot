@@ -15,9 +15,11 @@ const sessionManager    = require('./sessionManager');
 const sheetsService     = require('./sheetsService');
 const claudeService     = require('./claudeService');
 const twilioService     = require('./twilioService');
-// const shopifyService    = require('./shopifyService'); // unused
 const horarioService    = require('./horarioService');
 const colaEscalaciones  = require('./colaEscalaciones');
+const { FLOW_STATES, TIME_CONSTANTS } = require('./constants');
+const { CPValidator, PhoneValidator } = require('./validators');
+const logger = require('./logger');
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 

@@ -1,8 +1,25 @@
 require('dotenv').config();
+
+// Validar variables de entorno requeridas
+const REQUIRED_ENV = [
+  'ANTHROPIC_API_KEY',
+  'GOOGLE_SHEETS_ID',
+  'GOOGLE_SERVICE_ACCOUNT_JSON',
+  'TWILIO_ACCOUNT_SID',
+  'TWILIO_AUTH_TOKEN',
+  'WIG_WHATSAPP_NUMBER',
+];
+const missing = REQUIRED_ENV.filter(key => !process.env[key]);
+if (missing.length > 0) {
+  console.error('❌ Missing required environment variables:', missing.join(', '));
+  process.exit(1);
+}
+
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const logger = require('./logger');
 const webhookHandler = require('./webhookHandler');
 const shopifyWebhookHandler = require('./shopifyWebhookHandler');
 const { getTranscripts } = require('./transcriptService');
