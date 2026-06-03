@@ -157,10 +157,13 @@ async function webhookHandler(req, res) {
 
   // Registrar mensaje individual en el log antes del debounce
   if (!chatLogs.has(from)) {
-    getExistingTranscript(from).then(previo => {
+    try {
+      const previo = await getExistingTranscript(from);
       const lines = previo ? previo.split('\n').filter(Boolean) : [];
       if (!chatLogs.has(from)) chatLogs.set(from, { lines, lastActivity: Date.now() });
-    }).catch(() => {});
+    } catch (err) {
+      chatLogs.set(from, { lines: [], lastActivity: Date.now() });
+    }
   }
 
   // Debounce: acumular mensajes y procesar tras 3s de silencio
@@ -173,7 +176,11 @@ async function webhookHandler(req, res) {
     if (!entry) return;
     const mensajeCompleto = entry.messages.join(' ');
     pendingMessages.delete(from);
-    await procesarMensaje(from, mensajeCompleto);
+    try {
+      await procesarMensaje(from, mensajeCompleto);
+    } catch (err) {
+      console.error('procesarMensaje error:', err.message);
+    }
   }, 1500);
 
   pendingMessages.set(from, pending);

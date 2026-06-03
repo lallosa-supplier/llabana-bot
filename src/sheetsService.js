@@ -45,6 +45,10 @@
 
 const { google } = require('googleapis');
 
+// Simple in-memory cache para findCustomer (10 min TTL)
+const customerCache = new Map();
+const CACHE_TTL = 10 * 60 * 1000;
+
 const SPREADSHEET_ID   = process.env.GOOGLE_SHEETS_ID;
 const SHEET_BASE       = '1 Base Maestra';
 const SHEET_SUCURSALES = '2 Sucursales';
@@ -217,14 +221,23 @@ function normalizeText(text) {
 
 /**
  * Busca un cliente por número de teléfono en "1 Base Maestra".
+ * Usa caché local de 10 minutos para reducir llamadas a Sheets API.
  * @returns {object|null}
  */
 async function findCustomer(phone) {
+  const phoneKey = normalizePhone(phone);
+  const cached = customerCache.get(phoneKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log(`📦 [CACHE] findCustomer hit for ${phoneKey}`);
+    return cached.data;
+  }
+
   try {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SHEET_BASE}!A:S`,
+      timeout: 10000,
     });
 
     const rows = res.data.values || [];
@@ -235,7 +248,7 @@ async function findCustomer(phone) {
       const rowPhone = row[BASE.TELEFONO] || '';
       if (!rowPhone) continue;
       if (normalizePhone(rowPhone) === search) {
-        return {
+        const result = {
           rowIndex:    i + 1,             // 1-based para la API
           phone:       rowPhone,
           name:        row[BASE.NOMBRE]   || '',
@@ -249,14 +262,34 @@ async function findCustomer(phone) {
           totalSpent:  row[BASE.MONTO]    || '0',
           fechaReg:    row[BASE.FECHA_REG]|| '',
         };
+        // Guardar en caché
+        customerCache.set(phoneKey, { data: result, timestamp: Date.now() });
+        return result;
       }
     }
+    // Cachear resultado nulo también (para evitar búsquedas repetidas de números inexistentes)
+    customerCache.set(phoneKey, { data: null, timestamp: Date.now() });
     return null;
   } catch (err) {
     console.error('sheetsService.findCustomer error:', err.message);
     return null;
   }
 }
+
+// Limpiar caché cada 5 minutos
+setInterval(() => {
+  const now = Date.now();
+  let cleaned = 0;
+  for (const [key, cached] of customerCache.entries()) {
+    if (now - cached.timestamp > CACHE_TTL) {
+      customerCache.delete(key);
+      cleaned++;
+    }
+  }
+  if (cleaned > 0) {
+    console.log(`🧹 Customer cache cleaned: ${cleaned} entries removed`);
+  }
+}, 5 * 60 * 1000).unref();
 
 /**
  * Registra un cliente nuevo al final de "1 Base Maestra".

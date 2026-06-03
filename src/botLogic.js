@@ -275,7 +275,7 @@ async function handleMessage(phone, messageBody) {
       await sessionManager.updateSession(phone, { tempData: session.tempData });
       if (session.customer?.rowIndex) {
         sheetsService.updateOrderData(session.customer.rowIndex,
-          { entryPoint: origenNuevo }).catch(() => {});
+          { entryPoint: origenNuevo }).catch(err => console.warn('⚠️  Failed to update origin:', err.message));
       }
       console.log(`🔗 Origen actualizado en sesión activa: ${origenNuevo}`);
     }
@@ -298,7 +298,7 @@ async function handleMessage(phone, messageBody) {
         channelDetail: 'Nacional',
       };
       if (entryPoint !== 'Directo') {
-        sheetsService.updateOrderData(customer.rowIndex, { entryPoint }).catch(() => {});
+        sheetsService.updateOrderData(customer.rowIndex, { entryPoint }).catch(err => console.warn('⚠️  Failed to update entryPoint:', err.message));
       }
 
       // Actualizar nombre si el registro quedó vacío (ej. tras reinicio mid-flow)
@@ -410,7 +410,7 @@ async function handleMessage(phone, messageBody) {
 
       if (!wigAvisado) {
         // Primera vez que escribe después de escalar — avisar y marcar
-        sessionManager.updateSession(phone, {
+        await sessionManager.updateSession(phone, {
           tempData: { ...session.tempData, wigAvisado: true },
         });
         return 'Ya avisé al asesor, te contactará en breve 🙌\n\nMientras tanto puedo ayudarte con lo que necesites — asesoría de productos, recomendaciones de alimento, dudas de envío. ¿En qué te ayudo?';
@@ -467,7 +467,7 @@ async function handleMessage(phone, messageBody) {
       }
 
       session.conversationHistory.push({ role: 'assistant', content: response });
-      sessionManager.updateSession(phone, { conversationHistory: session.conversationHistory });
+      await sessionManager.updateSession(phone, { conversationHistory: session.conversationHistory });
       return response;
     }
     case 'escalated':        return handleEscalated(phone, messageBody, session);
@@ -680,7 +680,7 @@ async function handleAskingMexico(phone, message, session) {
       const yaExisteLocal = await sheetsService.findCustomer(phone);
       if (yaExisteLocal) {
         localRowIndex = yaExisteLocal.rowIndex;
-        sheetsService.updateOrderData(localRowIndex, { state: stateDetectado }).catch(() => {});
+        sheetsService.updateOrderData(localRowIndex, { state: stateDetectado }).catch(err => console.warn('⚠️  Failed to update state:', err.message));
       } else {
         localRowIndex = await sheetsService.registerCustomer({
           phone, name: '', email: '', state: stateDetectado, city: '', cp: '',
@@ -959,27 +959,28 @@ async function handleAskingName(phone, message, session) {
     } else {
       // Fallback: cliente sin rowIndex — registrar ahora con el nombre
       console.log(`⚠️ [NOMBRE] rowIndex no encontrado para ${phone} — registrando con nombre ${nombre}`);
-      sheetsService.registerCustomer({
-        phone,
-        name:       nombre,
-        email:      '',
-        state:      session.customer?.state || '',
-        city:       session.customer?.city  || '',
-        cp:         '',
-        segmento:   'Lead frío',
-        aceWa:      'SI',
-        entryPoint: session.tempData?.entryPoint || 'Directo',
-        origen:     'WhatsApp',
-      }).then(newRowIndex => {
+      try {
+        const newRowIndex = await sheetsService.registerCustomer({
+          phone,
+          name:       nombre,
+          email:      '',
+          state:      session.customer?.state || '',
+          city:       session.customer?.city  || '',
+          cp:         '',
+          segmento:   'Lead frío',
+          aceWa:      'SI',
+          entryPoint: session.tempData?.entryPoint || 'Directo',
+          origen:     'WhatsApp',
+        });
         if (newRowIndex) {
-          sessionManager.updateSession(phone, {
+          await sessionManager.updateSession(phone, {
             customer: { ...session.customer, rowIndex: newRowIndex, name: nombre },
           });
           console.log(`✅ [NOMBRE] Cliente registrado con nombre en fallback | fila ${newRowIndex}`);
         }
-      }).catch(err => {
+      } catch (err) {
         console.error(`❌ [NOMBRE] Error en fallback registro:`, err.message);
-      });
+      }
     }
     const palabras = nombre.split(' ').filter(Boolean);
     const tieneApellido = palabras.length >= 2;
@@ -1672,7 +1673,7 @@ async function handleActive(phone, message, session) {
 
     // Cambiar a waiting_for_wig para que los siguientes mensajes (OK, Gracias) no renotifiquen
     if (session.customer?.rowIndex) {
-      sheetsService.appendTag(session.customer.rowIndex, 'Queja').catch(() => {});
+      sheetsService.appendTag(session.customer.rowIndex, 'Queja').catch(err => console.warn('⚠️  Failed to append Queja tag:', err.message));
       sheetsService.updateOrderData(session.customer.rowIndex, {
         notas: `Queja pedido: ${message.substring(0, 100)}`,
       }).catch(() => {});
@@ -1759,7 +1760,7 @@ async function handleActive(phone, message, session) {
       ).catch(() => {});
 
       if (!session.customer.segmento || session.customer.segmento === 'Lead frío') {
-        sheetsService.updateSegmento(phone, 'Lead frío').catch(() => {});
+        sheetsService.updateSegmento(phone, 'Lead frío').catch(err => console.warn('⚠️  Failed to update segmento:', err.message));
       }
     }
 
@@ -1802,7 +1803,7 @@ async function handleActive(phone, message, session) {
 
   // Si el bot recomendó un producto (tiene link de la tienda), taggear como asesorado
   if (respuestaFinal.includes('llabanaenlinea.com') && session.customer?.rowIndex) {
-    sheetsService.appendTag(session.customer.rowIndex, 'Asesorado Bot').catch(() => {});
+    sheetsService.appendTag(session.customer.rowIndex, 'Asesorado Bot').catch(err => console.warn('⚠️  Failed to append Asesorado Bot tag:', err.message));
   }
 
   return respuestaFinal;
@@ -2096,7 +2097,7 @@ async function escalateWithResumen(phone, session, motivo) {
 
   // Persistir en Sheets para sobrevivir reinicios de servidor
   if (session.customer?.rowIndex) {
-    sheetsService.appendNota(session.customer.rowIndex, `PENDIENTE_ESCALACION: ${resumen}`).catch(() => {});
+    sheetsService.appendNota(session.customer.rowIndex, `PENDIENTE_ESCALACION: ${resumen}`).catch(err => console.warn('⚠️  Failed to append pending escalation note:', err.message));
   }
 
   session.tempData = {
@@ -2150,7 +2151,7 @@ async function handleConfirmingEscalation(phone, message, session) {
   // Todo lo demás (Sí, Si, correcto, emojis, mensajes sustanciales…) → confirmar y escalar
   const { fueraHorario: fueraH4 } = await notifyWig(phone, session, motivo, resumen);
   if (session.customer?.rowIndex) {
-    sheetsService.appendNota(session.customer.rowIndex, resumen).catch(() => {});
+    sheetsService.appendNota(session.customer.rowIndex, resumen).catch(err => console.warn('⚠️  Failed to append escalation note:', err.message));
   }
 
   if (fueraH4) {

@@ -145,15 +145,26 @@ async function getAllActiveSessions() {
   if (redis) {
     try {
       const keys = await redis.keys('session:*');
+      if (keys.length === 0) return [];
+
+      // Use pipelined calls instead of sequential gets
+      const pipe = redis.pipeline();
+      keys.forEach(key => pipe.get(key));
+      const results = await pipe.exec();
+
       const entries = [];
-      for (const key of keys) {
-        const data = await redis.get(key);
+      results.forEach((result, index) => {
+        const [err, data] = result;
+        if (err) {
+          console.warn(`Redis get error for ${keys[index]}:`, err.message);
+          return;
+        }
         const session = deserialize(data);
         if (session) {
-          const phone = key.replace('session:', '');
+          const phone = keys[index].replace('session:', '');
           entries.push([phone, session]);
         }
-      }
+      });
       return entries;
     } catch (err) {
       console.error('Redis getAllActiveSessions error:', err.message);

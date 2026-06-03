@@ -24,9 +24,13 @@ const { formatPhoneForStorage, limpiarNombre, lookupCpMX } = sheetsService;
 function verifyHmac(rawBody, hmacHeader) {
   const secret = process.env.SHOPIFY_WEBHOOK_SECRET;
 
-  // Sin secret configurado: dejar pasar con advertencia (solo en desarrollo)
+  // Sin secret configurado: fail closed en producción
   if (!secret) {
-    console.warn('⚠️  SHOPIFY_WEBHOOK_SECRET no configurado — omitiendo verificación HMAC');
+    if (process.env.NODE_ENV === 'production') {
+      console.error('❌ SHOPIFY_WEBHOOK_SECRET must be configured in production');
+      return false;
+    }
+    console.warn('⚠️  SHOPIFY_WEBHOOK_SECRET no configurado — omitiendo verificación HMAC (desarrollo)');
     return true;
   }
   if (!hmacHeader) return false;

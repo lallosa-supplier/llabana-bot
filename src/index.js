@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 const webhookHandler = require('./webhookHandler');
 const shopifyWebhookHandler = require('./shopifyWebhookHandler');
 const { getTranscripts } = require('./transcriptService');
@@ -13,12 +14,22 @@ const { getRedisClient } = require('./sessionManager');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Rate limiters para webhooks
+const webhookLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 1000, // máximo 1000 requests por ventana
+  message: 'Demasiadas solicitudes al webhook, intenta de nuevo más tarde.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // ── Shopify webhook — DEBE ir antes del bodyParser global ────────────────────
 // Shopify requiere el raw body (Buffer) para verificar la firma HMAC.
 // Al definir esta ruta antes de app.use(bodyParser.json()), Express aplica
 // express.raw() a esta ruta antes de que el parser global intervenga.
 app.post(
   '/webhook/shopify',
+  webhookLimiter,
   express.raw({ type: 'application/json' }),
   shopifyWebhookHandler
 );
@@ -54,7 +65,7 @@ app.get('/health', async (req, res) => {
   res.status(httpStatus).json(checks);
 });
 
-app.post('/webhook/whatsapp', webhookHandler);
+app.post('/webhook/whatsapp', webhookLimiter, webhookHandler);
 
 app.use('/dashboard', express.static(path.join(__dirname, '../public')));
 
@@ -107,9 +118,21 @@ app.listen(PORT, () => {
   colaEscalaciones.setRedis(getRedisClient());
   console.log('📥 Cola de escalaciones fuera de horario activa');
 
-  // Cron de seguimientos — corre cada 15 minutos
+  // Cron de seguimientos — corre cada 15 minutos (idempotent)
+  let isFollowupRunning = false;
   setInterval(async () => {
-    await runFollowUps();
+    if (isFollowupRunning) {
+      console.warn('⚠️  Previous followup still running, skipping this cycle');
+      return;
+    }
+    isFollowupRunning = true;
+    try {
+      await runFollowUps();
+    } catch (err) {
+      console.error('❌ Follow-up service error:', err.message);
+    } finally {
+      isFollowupRunning = false;
+    }
   }, 15 * 60 * 1000);
   console.log('⏰ Follow-up service activo — revisa cada 15 min');
 });
