@@ -298,6 +298,84 @@ function generateReport(logFile, content, conversations) {
   }
 }
 
+/**
+ * Genera sección de código fuente actual
+ */
+function generateSourceCodeSection() {
+  const srcDir = path.join(__dirname);
+  const files = fs.readdirSync(srcDir)
+    .filter(f => f.endsWith('.js') && !f.includes('test') && !f.includes('analysis'))
+    .sort();
+
+  let section = '\n════════════════════════════════════════════════════════════════════════════════\n';
+  section += '📝 SECCIÓN 1 — CÓDIGO FUENTE ACTUAL (PRODUCCIÓN)\n';
+  section += '════════════════════════════════════════════════════════════════════════════════\n\n';
+
+  files.forEach(file => {
+    const filePath = path.join(srcDir, file);
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const lines = content.split('\n').length;
+
+    section += `───── src/${file} (${lines} líneas) ─────\n`;
+    section += content;
+    section += '\n\n';
+  });
+
+  return section;
+}
+
+/**
+ * Genera sección de transcripts del día
+ */
+function generateTranscriptsSection(logContent, conversations) {
+  let section = '════════════════════════════════════════════════════════════════════════════════\n';
+  section += '💬 SECCIÓN 2 — TRANSCRIPCIONES DEL DÍA\n';
+  section += '════════════════════════════════════════════════════════════════════════════════\n\n';
+
+  if (Object.keys(conversations).length === 0) {
+    section += 'No hay conversaciones registradas.\n';
+    return section;
+  }
+
+  const lines = logContent.split('\n');
+  let currentConversation = {};
+
+  for (const phone of Object.keys(conversations).sort()) {
+    section += `\n┌─────────────────────────────────────────────────────────────┐\n`;
+    section += `│ Teléfono: ${phone.padEnd(55)}\n`;
+    section += `└─────────────────────────────────────────────────────────────┘\n\n`;
+
+    // Buscar en los logs las líneas que contengan este teléfono
+    for (const line of lines) {
+      // Líneas de usuario
+      if (line.includes(`whatsapp:${phone}`) && line.includes('📨')) {
+        const match = line.match(/📨.*?:\s*(.+)/);
+        if (match) {
+          section += `  📨 ${match[1].substring(0, 120)}\n`;
+        }
+      }
+      // Líneas de bot
+      if (line.includes(`whatsapp:${phone}`) && line.includes('📤')) {
+        const match = line.match(/📤.*?:\s*(.+)/);
+        if (match) {
+          section += `  📤 ${match[1].substring(0, 120)}\n`;
+        }
+      }
+      // Líneas de diagnóstico
+      if (line.includes(`whatsapp:${phone}`) && line.includes('🔍')) {
+        const match = line.match(/🔍\s*(.+)/);
+        if (match) {
+          section += `  🔍 ${match[1].substring(0, 120)}\n`;
+        }
+      }
+    }
+
+    section += '\n';
+  }
+
+  return section;
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 
 const logFile = getLatestLogFile();
@@ -306,6 +384,13 @@ const conversations = extractConversations(content);
 
 generateReport(logFile, content, conversations);
 
+// Agregar secciones nuevas
+const sourceCode = generateSourceCodeSection();
+const transcripts = generateTranscriptsSection(content, conversations);
+
+console.log(sourceCode);
+console.log(transcripts);
+
 module.exports = {
   getLatestLogFile,
   extractConversations,
@@ -313,4 +398,6 @@ module.exports = {
   detectProblematicConversations,
   analyzeQuality,
   generateReport,
+  generateSourceCodeSection,
+  generateTranscriptsSection,
 };
