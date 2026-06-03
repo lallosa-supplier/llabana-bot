@@ -54,8 +54,50 @@ const CLOSING_VARIANTS = [
 ];
 
 // ── Patrones de detección ─────────────────────────────────────────────────────
-// ⚠️ Moved to PatternRegistry — all patterns now centralized in patternRegistry.js
-// See MODULE_GUIDE.md for usage: PatternRegistry.test('CATEGORY', text)
+
+const OUTSIDE_MEXICO_PATTERNS = [
+  /estados\s*unidos/i, /\busa\b/i,       /\bee\.?\s*uu\.?\b/i,
+  /\bguatemala\b/i,    /\bcolombia\b/i,  /\bvenezuela\b/i,
+  /\bargentina\b/i,    /espa[ñn]a/i,     /canad[aá]/i,
+  /\bchile\b/i,        /per[uú]/i,       /\bcuba\b/i,
+  /\bhonduras\b/i,     /el\s*salvador/i, /\bnicaragua\b/i,
+  /costa\s*rica/i,     /panam[aá]/i,     /\bbrasil\b/i,
+  /\bbolivia\b/i,      /\becuador\b/i,   /\buruguay\b/i,
+];
+
+const ESCALATION_PROFILE_PATTERNS = [
+  /distribuidor/i,
+  /revendedor/i,
+  /grandes?\s*cantidades?\s+(?:de\s+)?(?:tons?|toneladas?|cami[oó]n)/i,
+];
+
+const HUMAN_REQUEST_PATTERNS = [
+  /\basesor\b/i, /\bhumano\b/i, /\bpersona\b/i, /\bwig\b/i,
+  /\bagente\b/i, /hablar\s+con/i, /quiero\s+hablar/i,
+  /\batenci[oó]n\s+humana\b/i, /\bme\s+atiendan?\b/i,
+];
+
+const PRICE_PATTERNS = [
+  /\bprecio/i, /\bcu[aá]nto\s+cuesta/i, /\bcu[aá]nto\s+vale/i,
+  /\bcu[aá]nto\s+cobran/i, /\bcu[aá]nto\s+es\b/i, /\bcosto\b/i,
+  /\btarifa\b/i, /\bpresupuesto\b/i,
+];
+
+const RESET_PATTERNS = /^(inicio|men[uú]|empezar|reset|start|comenzar|nueva\s*consulta|reiniciar)$/i;
+
+const RH_PATTERNS = [
+  /\bvacante/i, /\bempleo\b/i, /\btrabajo\b/i, /\bcontrataci[oó]n/i,
+  /\brecursos\s*humanos/i, /\brh\b/i, /\bpostularme\b/i, /\bpostulaci[oó]n/i,
+  /\bcurr[ií]culum\b/i, /\bcv\b/i, /\bsueldo\b/i, /\bplaza\b/i,
+  /\bmonitorista\b/i, /\bencargado\b/i, /me\s+interesa\s+(la\s+)?plaza/i,
+  /busco\s+(trabajo|empleo)/i, /quiero\s+trabajar/i,
+];
+
+function isRHRequest(text) {
+  return RH_PATTERNS.some(re => re.test(text));
+}
+
+const DESPEDIDA_PATTERNS = /^(gracias|muchas gracias|seria todo|sería todo|ok gracias|vale gracias|listo gracias|perfecto gracias|hasta luego|bye|adios|adiós|no gracias|es todo|eso es todo|por ahora es todo|nada mas|nada más)$/i;
 
 const ENTRY_POINT_MAP = {
   'quiero mas informacion':               'Llabana.com Footer',
@@ -91,7 +133,53 @@ function isEscalationProfile(text) {
   return PatternRegistry.test('ESCALATION_PROFILE', text.trim());
 }
 
-// Pattern definitions moved to patternRegistry.js — see MODULE_GUIDE.md
+const DISTRIBUIDOR_PATTERNS = [
+  /\bdistribui[dr]/i, /\bser\s+distribuidor/i, /\bvender\s+sus\s+productos/i,
+  /\bfranquicia/i, /\brevendedor/i, /\bpunto\s+de\s+venta\s+propio/i,
+  /\bquiero\s+vender\b/i, /\bcomercializar/i, /\bdistribución\s+exclusiva/i,
+  /\bagente\s+de\s+ventas/i, /\bconvertirme\s+en\s+distribuidor/i,
+  /\bveterinaria\b/i,
+  /\bprecio(s)?\s+(para|de)\s+(veterinaria|tienda|negocio|reventa)/i,
+  /\bventa\s+en\s+(veterinaria|tienda|negocio)/i,
+  /\bpara\s+vender\b/i,
+  /\brevender\b/i,
+  /\bpunto\s+de\s+venta\b/i,
+];
+
+function isDistribuidor(text) {
+  // Excluir preguntas sobre si hay distribuidor/tienda en una ciudad
+  const esPreguntaCobertura = /tienen?\s+(alg[uú]n?\s+)?(distribuidor|tienda|sucursal|punto\s+de\s+venta)\s+(en|cerca|por)/i.test(text) ||
+    /hay\s+(alg[uú]n?\s+)?(distribuidor|tienda|sucursal)\s+(en|cerca|por)/i.test(text) ||
+    /d[oó]nde\s+(tienen?|hay|est[aá]n?)\s+(distribuidor|tienda|sucursal)/i.test(text);
+
+  if (esPreguntaCobertura) return false;
+  return PatternRegistry.test('DISTRIBUIDOR', text);
+}
+
+const PROVEEDOR_PATTERNS = [
+  /\bser\s+proveedor/i,
+  /\bquiero\s+proveer/i,
+  /\bsoy\s+proveedor/i,
+  /\bvenderle[s]?\s+(a\s+)?(llabana|ustedes)/i,
+  /\bofrecer(les?)?\s+(mis\s+)?(productos?|servicios?|insumos?|materia)/i,
+  /\bproveedor\s+de\s+llabana/i,
+  /\bcontacto\s+de\s+compras/i,
+  /\bdepartamento\s+de\s+compras/i,
+  /\bquiero\s+venderles/i,
+  /\bsoy\s+fabricante/i,
+  /\bproducimos?\b/i,
+  /\bimportador\b/i,
+  /\bexportador\b/i,
+  /\bmanufacturer\b/i,
+  /\bsupplier\b/i,
+  /\bfabricante\b/i,
+  /\bwe\s+(are|make|produce|manufacture|supply)/i,
+  /\bresponsable\s+de\s+compras/i,
+  /\bpurchasing\s+(manager|department|contact)/i,
+  /\bcooperation\b/i,
+  /\bpartnership\b/i,
+  /\bbusiness\s+opportunity/i,
+];
 
 function isProveedor(text) {
   return PatternRegistry.test('PROVEEDOR', text);
@@ -107,12 +195,25 @@ function isPriceQuestion(text) {
 
 // ── Helpers de CP ─────────────────────────────────────────────────────────────
 
-// CP validators moved to validators.js (CPValidator class) — use instead:
-// CPValidator.isCDMX(cp), CPValidator.isEdomex(cp), CPValidator.getState(cp)
-// Keeping wrappers for backward compatibility:
-function cpIsCDMX(cp) { return CPValidator.isCDMX(cp); }
-function cpIsEdomex(cp) { return CPValidator.isEdomex(cp); }
-function cpToState(cp) { return CPValidator.getState(cp); }
+/** CP 01000–16999 → CDMX */
+function cpIsCDMX(cp) {
+  const n = parseInt(cp, 10);
+  return n >= 1000 && n <= 16999;
+}
+
+/** CP 50000–57999 (prefijo 50–57) → Estado de México */
+function cpIsEdomex(cp) {
+  const s = cp.toString().padStart(5, '0');
+  const prefix = parseInt(s.substring(0, 2), 10);
+  return prefix >= 50 && prefix <= 57;
+}
+
+/** Deriva el nombre del estado a partir del CP. */
+function cpToState(cp) {
+  if (cpIsCDMX(cp))   return 'Ciudad de México';
+  if (cpIsEdomex(cp)) return 'Estado de México';
+  return '';
+}
 
 // ── Helpers de texto ──────────────────────────────────────────────────────────
 
@@ -134,13 +235,13 @@ function trimHistory(history, max = 20) {
 
 async function handleMessage(phone, messageBody) {
   // Reset manual
-  if (PatternRegistry.test('RESET', messageBody.trim())) {
+  if (RESET_PATTERNS.test(messageBody.trim())) {
     await sessionManager.deleteSession(phone);
   }
 
   // Bloquear reinicio de extranjeros ya cerrados (salvo reset manual)
   const redisClient = sessionManager.getRedisClient?.();
-  if (redisClient && !PatternRegistry.test('RESET', messageBody.trim())) {
+  if (redisClient && !RESET_PATTERNS.test(messageBody.trim())) {
     try {
       const yaExtranjero = await redisClient.get(`extranjero:${phone}`);
       if (yaExtranjero) {
@@ -1819,7 +1920,7 @@ async function handleConfirmingReset(phone, message, session) {
 // ── Esperando asesor ──────────────────────────────────────────────────────────
 
 async function handleWaitingForWig(phone, message, session) {
-  if (PatternRegistry.test('GOODBYE',message.trim())) {
+  if (DESPEDIDA_PATTERNS.test(message.trim())) {
     await sessionManager.updateSession(phone, { flowState: 'escalated' });
     return '¡Con gusto! En breve te contacta un asesor 🙌 Que tengas buen día 🌾';
   }
@@ -1889,7 +1990,7 @@ async function handleEscalated(phone, message, session) {
   }
 
   // Despedida → cerrar amablemente
-  if (PatternRegistry.test('GOODBYE',message.trim())) {
+  if (DESPEDIDA_PATTERNS.test(message.trim())) {
     return '¡Hasta luego! 🌾 Cuando necesites algo más, aquí estamos.';
   }
 
