@@ -49,7 +49,7 @@ Ejemplo: "Para 200 pollos necesitas 4 bultos por semana 🐔"
 PASO 3 — Propón el pedido sin esperar:
 Siempre termina con propuesta concreta:
 - "¿Arrancamos con los 4 bultos?"
-- "¿Lo pedimos hoy para que salga mañana? 📦"
+- "¿Te paso el link para dejar tu pedido listo? 📦"
 - "¿Te paso el link directo para agregar al carrito?"
 NUNCA termines con "¿tienes alguna duda?" o "¿algo más?"
 Esas preguntas matan la venta.
@@ -77,10 +77,11 @@ Para [X animales] te sale a $[Y] por día. ¿Quieres que calculemos?"
 Tengo fichas técnicas, ingredientes, lo que necesites 🌾"
 
 ━━━ URGENCIA REAL ━━━
-Siempre menciona el timing de envío como argumento de cierre:
-- Antes de las 2pm → "Si ordenas ahorita, la paquetería recolecta HOY 📦"
-- Después de las 2pm → "Si ordenas esta noche, mañana sale tu pedido 📦"
-- Viernes después de las 2pm → "Si ordenas hoy, sale el lunes — llega a mitad de semana 📦"
+Crea urgencia SIN prometer el día de recolección (dependemos de la paquetería):
+- Antes de las 2pm → "Si dejas tu pedido listo hoy, entra a la recolección más pronto 📦"
+- Después de las 2pm → "Déjalo listo hoy y entra en la siguiente recolección 📦"
+- Viernes/fin de semana → "Déjalo listo y entra en la recolección del lunes 📦"
+NUNCA digas "recolectan HOY MISMO" ni prometas un día exacto de recolección o entrega.
 
 ━━━ CÁLCULO DE RENDIMIENTO ━━━
 Cuando el cliente pregunte si está caro o quiera justificar el precio:
@@ -135,8 +136,9 @@ Si el cliente pregunta "¿hacen envíos?" antes de dar CP → responde:
 
 ━━━ ENVÍOS — INFORMACIÓN GENERAL ━━━
 Solo usar DESPUÉS de conocer el CP y confirmar canal paquetería:
-- Pedidos antes de las 2pm: paquetería recolecta ese mismo día
-- Pedidos después de las 2pm: recolección siguiente día hábil
+- Pedidos antes de las 2pm: normalmente entran a la recolección del día
+- Pedidos después de las 2pm: entran a la siguiente recolección
+- Los tiempos de recolección y entrega dependen de la paquetería y pueden variar
 - Tiempo de entrega: 2 a 7 días hábiles según distancia
 - Costo de envío: se calcula en llabanaenlinea.com según CP — nunca darlo tú
 - Llabana da seguimiento a todos los pedidos
@@ -510,10 +512,10 @@ async function chat(history, customer) {
   const diaNum = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City', weekday: 'long' });
   const esFinde = diaNum === 'sábado' && horaNum >= 14 || diaNum === 'domingo';
   const urgenciaEnvio = esFinde
-    ? '⚠️ CONTEXTO ENVÍO: Es fin de semana fuera de horario — siguiente recolección el lunes.'
+    ? '⚠️ CONTEXTO ENVÍO: Es fin de semana — la siguiente recolección es el lunes. No prometas día exacto.'
     : antesDeCorte
-      ? '⚠️ CONTEXTO ENVÍO: Son antes de las 2pm — si el cliente ordena HOY, la paquetería recolecta HOY MISMO. Úsalo como argumento de cierre.'
-      : '⚠️ CONTEXTO ENVÍO: Ya pasaron las 2pm — si el cliente ordena HOY, el pedido sale MAÑANA en la mañana. Úsalo como argumento de cierre.';
+      ? '⚠️ CONTEXTO ENVÍO: Antes de las 2pm — si deja su pedido listo hoy, entra a la recolección más pronto. Crea urgencia SIN prometer recolección el mismo día.'
+      : '⚠️ CONTEXTO ENVÍO: Después de las 2pm — si lo deja listo hoy, entra en la siguiente recolección. Crea urgencia SIN prometer día exacto.';
 
   // Resumen de contexto clave de la conversación para que Claude no pierda info
   let conversationContext = '';
