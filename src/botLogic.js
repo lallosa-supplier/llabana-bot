@@ -1705,18 +1705,11 @@ async function handleActive(phone, message, session) {
 
     const cpGuardado = session.customer?.cp || '';
 
-    // Si no tiene CP → pedirlo antes de escalar
-    if (!cpGuardado) {
-      const cantidadActual = session.tempData?.cantidadBultos || 0;
-      const mensajeCP = cantidadActual >= 11 && cantidadActual < 500
-        ? `¿Cuál es tu código postal? 📍 Para ${cantidadActual} bultos, si estás en CDMX o Estado de México tenemos opciones de entrega directa 🚚`
-        : '¿Cuál es tu código postal? 📍 Con eso te digo exactamente cómo te lo hacemos llegar.';
-      sessionManager.updateSession(phone, {
-        flowState: 'asking_cp_before_escalation',
-        tempData: { ...session.tempData, pendingEscalation: true },
-      });
-      return mensajeCP;
-    }
+    // ESCALAR DIRECTAMENTE a Wig (sin pedir CP primero)
+    const motivo = session.tempData?.nombre || message.substring(0, 50) || 'consulta';
+    await notifyWig(phone, session, motivo);
+    sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
+    return 'Ahorita te conecto con un asesor 🙌';
 
     // Ya tiene CP → usarlo directamente
     const cpNum  = parseInt(cpGuardado.replace(/\D/g, ''), 10);
