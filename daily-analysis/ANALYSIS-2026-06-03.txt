@@ -1,0 +1,78 @@
+
+╔════════════════════════════════════════════════════════╗
+║       ANÁLISIS DIARIO DE LOGS - 2026-06-03              ║
+╚════════════════════════════════════════════════════════╝
+
+📊 ESTADÍSTICAS:
+   Conversaciones: 9
+   Promedio mensajes/conversación: 17.9
+   Total mensajes: 161
+
+🐛 BUGS DETECTADOS:
+
+1. 🔴 CRÍTICO limpiarNombre aceptando preguntas como apellidos
+   Ejemplo: Cliente dice "Que precio tiene..." → bot capta como nombre
+   ✅ ARREGLADO
+
+2. 🔴 CRÍTICO Nombre no se actualiza cuando cliente lo corrige
+   Ejemplo: Cliente corrige pero sesión sigue con nombre viejo
+   ✅ ARREGLADO
+
+⚠️  CONVERSACIONES PROBLEMÁTICAS DETECTADAS:
+
+CONVERSACIÓN PROBLEMÁTICA #1
+  Severidad: CRÍTICO
+  Número: +521862102315
+  Problema: 🔴 Nombre mal capturado (respuesta muy larga o contiene palabras clave)
+  Nombre detectado: "Hermilo Que precio tiene el vital ovinos?"
+  Log exacto:
+    2026-06-02T16:25:02.785531306Z [inf]  1:M 02 Jun 2026 16:25:02.151 * Background saving terminated with success
+    2026-06-02T16:25:15.971624160Z [inf]  📨 [whatsapp:+5218621023155]: Que precio tiene el vital ovinos?
+    2026-06-02T16:25:15.971629130Z [inf]  🔗 detectarOrigen: "que precio tiene el vital ovinos?" → Directo
+    2026-06-02T16:25:15.971633280Z [inf]  📤 [whatsapp:+5218621023155]: Solo para confirmar — ¿tu nombre es *Hermilo Que precio tiene el vital ovinos?*? 😊
+    2026-06-02T16:25:35.955837574Z [inf]  📨 [whatsapp:+5218621023155]: Si
+    2026-06-02T16:25:35.955842154Z [inf]  🔗 detectarOrigen: "si" → Directo
+
+CONVERSACIÓN PROBLEMÁTICA #2
+  Severidad: IMPORTANTE
+  Número: desconocido
+  Problema: 🟡 DIAGNOSTICO:ESCALACION detectado pero bot no escaló
+  Log exacto:
+    2026-06-02T20:01:52.087390180Z [inf]  📨 [whatsapp:+5217712663233]: me interesa hacer una forrajeria
+    2026-06-02T20:01:53.828655910Z [inf]  🔗 detectarOrigen: "me interesa hacer una forrajeria" → Directo
+    2026-06-02T20:01:56.136703957Z [inf]  🔍 [DIAGNOSTICO:ESCALACION] nombre="Hacer Una Forrajera" | mensaje="me interesa hacer una forrajeria" | historial=5 msgs
+    2026-06-02T20:01:56.316126585Z [inf]  📤 [whatsapp:+5217712663233]: ¿Cuál es tu código postal? 📍 Con eso te digo exactamente cómo te lo hacemos llegar.
+    2026-06-02T20:02:33.838101037Z [inf]  1:M 02 Jun 2026 20:02:26.050 * 1 changes in 60 seconds. Saving...
+    2026-06-02T20:02:33.838108570Z [inf]  1:M 02 Jun 2026 20:02:26.050 * Background saving started by pid 1561
+
+CONVERSACIÓN PROBLEMÁTICA #3
+  Severidad: CRÍTICO
+  Número: +521566935570
+  Problema: 🔴 Nombre mal capturado (respuesta muy larga o contiene palabras clave)
+  Nombre detectado: "Claudia Uribe Tenorio"
+  Log exacto:
+    2026-06-02T21:12:24.706974516Z [inf]  1574:C 02 Jun 2026 21:12:16.810 * Fork CoW for RDB: current 0 MB, peak 0 MB, average 0 MB
+    2026-06-02T21:12:24.706978389Z [inf]  1:M 02 Jun 2026 21:12:16.902 * Background saving terminated with success
+    2026-06-02T21:12:26.142925574Z [inf]  🔗 detectarOrigen: "uribe tenorio" → Directo
+    2026-06-02T21:12:26.493667178Z [inf]  📤 [whatsapp:+5215669355704]: Solo para confirmar — ¿tu nombre es *Claudia Uribe Tenorio*? 😊
+    2026-06-02T21:12:33.498031344Z [inf]  📨 [whatsapp:+5215669355704]: Su
+    2026-06-02T21:12:35.076940646Z [inf]  📨 [whatsapp:+5215669355704]: Si
+
+CONVERSACIÓN PROBLEMÁTICA #4
+  Severidad: IMPORTANTE
+  Número: desconocido
+  Problema: 🟡 DIAGNOSTICO:ESCALACION detectado pero bot no escaló
+  Log exacto:
+    2026-06-03T03:12:51.238444157Z [inf]  📨 [whatsapp:+5219212652984]: Cosamaloapan ver.
+    2026-06-03T03:12:51.238447877Z [inf]  🔗 detectarOrigen: "cosamaloapan ver." → Directo
+    2026-06-03T03:12:51.238450667Z [inf]  🔍 [DIAGNOSTICO:ESCALACION] nombre="Mauro Gomez Teran" | mensaje="Cosamaloapan ver." | historial=19 msgs
+    2026-06-03T03:12:51.238453177Z [inf]  📤 [whatsapp:+5219212652984]: ¿Cuál es tu código postal? 📍 Con eso te digo exactamente cómo te lo hacemos llegar.
+    2026-06-03T03:13:13.304981473Z [inf]  1:M 03 Jun 2026 03:13:06.074 * 1 changes in 60 seconds. Saving...
+    2026-06-03T03:13:13.304987450Z [inf]  1:M 03 Jun 2026 03:13:06.074 * Background saving started by pid 1597
+
+💡 CONVERSACIONES ANALIZADAS: 9
+   Archivo: logs.1780498797178.log
+
+🎯 RECOMENDACIONES:
+   ⏳ Revisar problemas detectados. Detalles arriba.
+

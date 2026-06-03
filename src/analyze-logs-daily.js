@@ -115,6 +115,107 @@ function detectBugs(logContent, conversations) {
 }
 
 /**
+ * Detecta conversaciones problemáticas con ejemplos de logs exactos
+ */
+function detectProblematicConversations(logContent) {
+  const lines = logContent.split('\n');
+  const problematicConversations = [];
+  let conversationIndex = 0;
+
+  // Patrones para detectar problemas
+  const nombreMalCapturadoPattern = /¿tu nombre es \*(.{20,})\*\?/i;
+  const escalacionSinEscalarPattern = /\[DIAGNOSTICO:ESCALACION\].*?📤.*?(?!escalad|wig|asesor)/i;
+  const followupIncorrectoPattern = /\[FOLLOWUP-A\].*?nombre:\s*([a-záéíóú\s]+)/i;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Problema 1: Nombre mal capturado (¿tu nombre es *[texto largo]*)
+    if (nombreMalCapturadoPattern.test(line)) {
+      const match = line.match(nombreMalCapturadoPattern);
+      const nombreCapturado = match ? match[1] : 'desconocido';
+
+      // Buscar conversación completa alrededor de esta línea
+      const start = Math.max(0, i - 3);
+      const end = Math.min(lines.length, i + 3);
+      const logContext = lines.slice(start, end).join('\n');
+
+      problematicConversations.push({
+        number: ++conversationIndex,
+        phone: extractPhoneFromLine(line),
+        problem: '🔴 Nombre mal capturado (respuesta muy larga o contiene palabras clave)',
+        nameDetected: nombreCapturado,
+        logExact: logContext,
+        severity: 'CRÍTICO',
+      });
+    }
+
+    // Problema 2: DIAGNOSTICO:ESCALACION sin escalar realmente
+    if (line.includes('[DIAGNOSTICO:ESCALACION]')) {
+      // Buscar siguiente línea de respuesta
+      let foundEscalation = false;
+      for (let j = i + 1; j < Math.min(lines.length, i + 5); j++) {
+        if (lines[j].includes('escalad') || lines[j].includes('wig') || lines[j].includes('asesor')) {
+          foundEscalation = true;
+          break;
+        }
+      }
+
+      if (!foundEscalation) {
+        const start = Math.max(0, i - 2);
+        const end = Math.min(lines.length, i + 4);
+        const logContext = lines.slice(start, end).join('\n');
+
+        problematicConversations.push({
+          number: ++conversationIndex,
+          phone: extractPhoneFromLine(line),
+          problem: '🟡 DIAGNOSTICO:ESCALACION detectado pero bot no escaló',
+          nameDetected: 'N/A',
+          logExact: logContext,
+          severity: 'IMPORTANTE',
+        });
+      }
+    }
+
+    // Problema 3: Follow-up A con nombre incorrecto
+    if (line.includes('[FOLLOWUP-A]') && line.includes('nombre:')) {
+      const match = line.match(/nombre:\s*([a-záéíóú\s]+?)[\]|$\s]/i);
+      if (match) {
+        const nombre = match[1].trim();
+        // Nombre incorrecto: menos de 3 letras O más de 4 palabras
+        const palabras = nombre.split(/\s+/).length;
+        const letras = nombre.replace(/\s/g, '').length;
+
+        if (letras < 3 || palabras > 4) {
+          const start = Math.max(0, i - 1);
+          const end = Math.min(lines.length, i + 3);
+          const logContext = lines.slice(start, end).join('\n');
+
+          problematicConversations.push({
+            number: ++conversationIndex,
+            phone: extractPhoneFromLine(line),
+            problem: `🟡 Follow-up A con nombre sospechoso (${letras} letras, ${palabras} palabras)`,
+            nameDetected: nombre,
+            logExact: logContext,
+            severity: 'MENOR',
+          });
+        }
+      }
+    }
+  }
+
+  return problematicConversations;
+}
+
+/**
+ * Extrae número de teléfono de una línea de log
+ */
+function extractPhoneFromLine(line) {
+  const match = line.match(/\+52\d{10}/);
+  return match ? match[0] : 'desconocido';
+}
+
+/**
  * Analiza calidad de las conversaciones
  */
 function analyzeQuality(conversations) {
@@ -142,6 +243,7 @@ function analyzeQuality(conversations) {
  */
 function generateReport(logFile, content, conversations) {
   const bugs = detectBugs(content, conversations);
+  const problematicConversations = detectProblematicConversations(content);
   const stats = analyzeQuality(conversations);
   const date = new Date().toISOString().split('T')[0];
 
@@ -165,13 +267,32 @@ function generateReport(logFile, content, conversations) {
     console.log(`✅ Sin bugs detectados\n`);
   }
 
+  // Nueva sección: Conversaciones problemáticas
+  if (problematicConversations.length > 0) {
+    console.log(`⚠️  CONVERSACIONES PROBLEMÁTICAS DETECTADAS:\n`);
+    problematicConversations.forEach((conv) => {
+      console.log(`CONVERSACIÓN PROBLEMÁTICA #${conv.number}`);
+      console.log(`  Severidad: ${conv.severity}`);
+      console.log(`  Número: ${conv.phone}`);
+      console.log(`  Problema: ${conv.problem}`);
+      if (conv.nameDetected !== 'N/A') {
+        console.log(`  Nombre detectado: "${conv.nameDetected}"`);
+      }
+      console.log(`  Log exacto:`);
+      console.log(`${conv.logExact.split('\n').map(l => `    ${l}`).join('\n')}`);
+      console.log(``);
+    });
+  } else {
+    console.log(`✅ No hay conversaciones problemáticas detectadas\n`);
+  }
+
   console.log(`💡 CONVERSACIONES ANALIZADAS: ${stats.totalConversations}`);
   console.log(`   Archivo: ${path.basename(logFile)}\n`);
 
   // Recomendaciones
   console.log(`🎯 RECOMENDACIONES:`);
-  if (bugs.length > 0) {
-    console.log(`   ⏳ Fixes aplicados. Monitorear en próximos logs.\n`);
+  if (bugs.length > 0 || problematicConversations.length > 0) {
+    console.log(`   ⏳ Revisar problemas detectados. Detalles arriba.\n`);
   } else {
     console.log(`   ✅ Sistema funcionando correctamente.\n`);
   }
@@ -184,3 +305,12 @@ const content = fs.readFileSync(logFile, 'utf-8');
 const conversations = extractConversations(content);
 
 generateReport(logFile, content, conversations);
+
+module.exports = {
+  getLatestLogFile,
+  extractConversations,
+  detectBugs,
+  detectProblematicConversations,
+  analyzeQuality,
+  generateReport,
+};
