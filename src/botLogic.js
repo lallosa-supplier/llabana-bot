@@ -19,6 +19,10 @@ const horarioService    = require('./horarioService');
 const colaEscalaciones  = require('./colaEscalaciones');
 const { FLOW_STATES, TIME_CONSTANTS } = require('./constants');
 const { CPValidator, PhoneValidator } = require('./validators');
+const PatternRegistry   = require('./patternRegistry');
+const { messageUtils, getFirstName } = require('./messageUtils');
+const EscalationManager = require('./escalationManager');
+const SessionUpdaters   = require('./sessionUpdaters');
 const logger = require('./logger');
 
 // ── Constantes ────────────────────────────────────────────────────────────────
@@ -122,11 +126,11 @@ function detectarOrigen(message) {
 }
 
 function isOutsideMexico(text) {
-  return /^no$/i.test(text.trim()) || OUTSIDE_MEXICO_PATTERNS.some(re => re.test(text));
+  return /^no$/i.test(text.trim()) || PatternRegistry.test('OUTSIDE_MEXICO', text);
 }
 
 function isEscalationProfile(text) {
-  return ESCALATION_PROFILE_PATTERNS.some(re => re.test(text.trim()));
+  return PatternRegistry.test('ESCALATION_PROFILE', text.trim());
 }
 
 const DISTRIBUIDOR_PATTERNS = [
@@ -149,7 +153,7 @@ function isDistribuidor(text) {
     /d[oó]nde\s+(tienen?|hay|est[aá]n?)\s+(distribuidor|tienda|sucursal)/i.test(text);
 
   if (esPreguntaCobertura) return false;
-  return DISTRIBUIDOR_PATTERNS.some(re => re.test(text));
+  return PatternRegistry.test('DISTRIBUIDOR', text);
 }
 
 const PROVEEDOR_PATTERNS = [
@@ -178,15 +182,15 @@ const PROVEEDOR_PATTERNS = [
 ];
 
 function isProveedor(text) {
-  return PROVEEDOR_PATTERNS.some(re => re.test(text));
+  return PatternRegistry.test('PROVEEDOR', text);
 }
 
 function isRequestingHuman(text) {
-  return HUMAN_REQUEST_PATTERNS.some(re => re.test(text.trim()));
+  return PatternRegistry.test('HUMAN_REQUEST', text.trim());
 }
 
 function isPriceQuestion(text) {
-  return PRICE_PATTERNS.some(re => re.test(text.trim()));
+  return PatternRegistry.test('PRICE_QUESTION', text.trim());
 }
 
 // ── Helpers de CP ─────────────────────────────────────────────────────────────
@@ -218,9 +222,7 @@ function capitalize(str) {
 }
 
 function primerNombre(nombre) {
-  const TITULOS = /^(dr\.?|dra\.?|doctor|doctora|ing\.?|lic\.?|mtro\.?|mtra\.?|prof\.?|sr\.?|sra\.?|don|doña)\s+/i;
-  const sinTitulo = (nombre || '').replace(TITULOS, '').trim();
-  return sinTitulo.split(/\s+/)[0] || '';
+  return getFirstName(nombre);
 }
 
 /** Recorta conversationHistory a los últimos N mensajes (par user/assistant) */
