@@ -552,6 +552,16 @@ async function handleAskingEntregaMx(phone, message, session) {
     return 'Nosotros entregamos a cualquier dirección dentro de México 📦 Desde ahí puedes llevarlo a donde necesites — el envío internacional corre por tu cuenta.\n\n¿Tienes alguna dirección en México donde podamos enviarte el pedido?';
   }
 
+  // Detectar ciudad/estado mexicano mencionado — tratar como cliente mexicano
+  const mencionaCiudadMX = /\b(chiapas|oaxaca|guerrero|veracruz|puebla|jalisco|sonora|sinaloa|chihuahua|coahuila|tamaulipas|nuevo\s+le[oó]n|tabasco|campeche|yucat[aá]n|quintana\s+roo|hidalgo|morelos|tlaxcala|guanajuato|quer[eé]taro|michoac[aá]n|colima|nayarit|zacatecas|durango|aguascalientes|san\s+luis|baja\s+california|cdmx|ciudad\s+de\s+m[eé]xico|estado\s+de\s+m[eé]xico|edomex)\b/i.test(message);
+
+  if (mencionaCiudadMX) {
+    // Tiene número extranjero pero menciona estado mexicano → tratar como cliente mexicano
+    await sessionManager.updateSession(phone, { flowState: 'asking_name' });
+    const session2 = await sessionManager.getSession(phone);
+    return handleAskingMexico(phone, 'sí', session2);
+  }
+
   // Si el cliente hace una pregunta de producto en lugar de responder sí/no
   const preguntaProducto = message.trim().length > 5 &&
     !esSi && !esNo &&
@@ -2263,7 +2273,7 @@ async function handleConfirmingName(phone, message, session) {
   const msg = message.trim().toLowerCase();
 
   // Confirmación positiva
-  const esConfirmacion = /^(s[ií]|sí|si|correcto|exact|ok|okay|claro|así|eso|👍|afirma)/.test(msg);
+  const esConfirmacion = /^(sí|si|su|sus|correcto|ok|afirma|afirmativo|claro|exacto|👍|✅|así\s+es|eso\s+es|en\s+efecto)$/i.test(msg.trim());
 
   // Corrección — el cliente da un nombre diferente
   const nombreNuevo = sheetsService.limpiarNombre(message);
