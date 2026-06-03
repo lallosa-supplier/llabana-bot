@@ -883,7 +883,10 @@ async function handleAskingName(phone, message, session) {
       const yaIncluyeNombre = posibleApellido.toLowerCase().startsWith(nombreParcial.toLowerCase());
       const textoParaUsar = yaIncluyeNombre ? posibleApellido : `${nombreParcial} ${posibleApellido}`;
 
-      const nombreLimpio = sheetsService.limpiarNombre(textoParaUsar) || textoParaUsar;
+      const nombreLimpio = sheetsService.limpiarNombre(textoParaUsar);
+      if (!nombreLimpio) {
+        return 'No capté bien tu apellido 😅 ¿Me lo escribes solito? Por ejemplo: García, López 😊';
+      }
       const nombreCompleto = nombreLimpio.charAt(0).toUpperCase() + nombreLimpio.slice(1);
 
       await sessionManager.updateSession(phone, {
