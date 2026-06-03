@@ -180,7 +180,7 @@ function limpiarNombre(nombre) {
   if (/^(de|del|la|el|los|las|un|una)$/i.test(n.split(' ')[0])) return '';
 
   // Contiene palabras que no son nombres
-  const nonName = /\b(hola|buenos?\s*d[ií]as?|buenas?\s*(tardes?|noches?)|quiero|precio|info(rmaci[oó]n)?|cu[aá]nto|c[oó]mo|gracias|tengo|busco|necesito|vendo|compro|vivo|soy\s+de|soy\s+un|mucho\s+gusto|un\s+placer|encantado|encantada|me\s+llamo|mi\s+nombre\s+es|croquetas?|alimento|cachorro|adulto|perro|gato|pollo|cerdo|ganado|vacas?|borrego|conejo|peces?|tilapia|codornices?|cliente|quisiera|sucursal|estado\s+de|pero\s+en|guerrero|morelos|jalisco|ustedes|nosotros|ellos|ellas|d[oó]nde|cu[aá]ndo|cu[aá]nto|c[oó]mo\s+se|qu[eé]\s+(es|son|tienen?)|est[aá]n\s+ubicados?|hacer|abrir|poner|montar|instalar|vender|comprar|forrajera|tienda|negocio)\b/i;
+  const nonName = /\b(hola|buenos?\s*d[ií]as?|buenas?\s*(tardes?|noches?)|quiero|precio|info(rmaci[oó]n)?|cu[aá]nto|c[oó]mo|gracias|tengo|busco|necesito|vendo|compro|vivo|soy\s+de|soy\s+un|mucho\s+gusto|un\s+placer|encantado|encantada|me\s+llamo|mi\s+nombre\s+es|croquetas?|alimento|cachorro|adulto|perro|gato|pollo|cerdo|ganado|vacas?|borrego|conejo|peces?|tilapia|codornices?|cliente|quisiera|sucursal|estado\s+de|pero\s+en|guerrero|morelos|jalisco|ustedes|nosotros|ellos|ellas|d[oó]nde|cu[aá]ndo|c[oó]mo\s+se|qu[eé]\s+(es|son|tienen?)|est[aá]n\s+ubicados?|hacer|abrir|poner|montar|instalar|vender|comprar|forrajera|tienda|negocio|tiene|vital|ovinos|ovina|corderos?|borregos?|engorda|entrenamiento|mantenimiento|casta\s+brava|traspatio|gallos?|patos?|aves|etapa|destete|peso|venta|programa)\b/i;
   if (nonName.test(n)) return '';
 
   // Un nombre real no tiene más de 4 palabras
