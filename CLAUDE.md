@@ -18,27 +18,79 @@ balanceado (Purina, Semillina), 36 sucursales en 7 estados, CEDIS en Ecatepec.
 
 ## ESTRUCTURA DEL PROYECTO
 
+32 archivos organizados por categoría:
+
 ```
 llosa-bot/
 ├── src/
-│   ├── botLogic.js              (~2400 líneas) — flujo conversacional completo
-│   ├── claudeService.js         — system prompt + catálogo 155 productos
-│   ├── sheetsService.js         — CRUD Google Sheets CRM
-│   ├── followUpService.js       — Follow-ups A (2h activo) y C (23h escalado)
-│   ├── wigAdminHandler.js       — Comandos /reparto /sucursal /nocontesta /atendido /pendientes
-│   ├── shopifyWebhookHandler.js — Webhooks Shopify
-│   ├── sessionManager.js        — Redis TTL 30h + fallback memoria
-│   ├── transcriptService.js     — Pestaña 5 Sheets, truncamiento 48k chars
-│   ├── horarioService.js        — L-V 8am-5pm, Sáb 9am-2pm
-│   ├── knowledgeService.js      — Catálogo desde pestaña 7 Sheets (cache 5 min)
-│   ├── webhookHandler.js        — Twilio webhook, debounce 1.5s
-│   ├── colaEscalaciones.js      — Cola Redis para escalaciones fuera de horario
-│   └── index.js                 — Express, rutas, cron follow-ups, health check
+│   ├─ CORE (Servicios principales)
+│   │  ├── index.js                    — Express, rutas, cron follow-ups, health check
+│   │  ├── botLogic.js                 — (~2387 líneas) flujo conversacional principal
+│   │  ├── claudeService.js            — Claude API integration + system prompt
+│   │  ├── sheetsService.js            — Google Sheets CRUD + caching
+│   │  ├── sessionManager.js           — Redis TTL 30h + fallback memoria
+│   │  └── twilioService.js            — WhatsApp message dispatch
+│   │
+│   ├─ HANDLERS (Webhooks y administración)
+│   │  ├── webhookHandler.js           — Twilio webhook, debounce 1.5s
+│   │  ├── wigAdminHandler.js          — Comandos /reparto /sucursal /nocontesta /atendido /pendientes
+│   │  └── shopifyWebhookHandler.js    — Webhooks Shopify
+│   │
+│   ├─ SERVICES (Lógica de negocio)
+│   │  ├── followUpService.js          — Follow-ups A (2h activo) y C (23h escalado)
+│   │  ├── transcriptService.js        — Pestaña 5 Sheets, truncamiento 48k chars
+│   │  ├── horarioService.js           — L-V 8am-5pm, Sáb 9am-2pm
+│   │  ├── knowledgeService.js         — Catálogo desde pestaña 7 Sheets (cache 5 min)
+│   │  └── colaEscalaciones.js         — Cola Redis para escalaciones fuera de horario
+│   │
+│   ├─ UTILS (Utilidades y validadores)
+│   │  ├── constants.js                — FLOW_STATES enum, magic strings centralizados
+│   │  ├── validators.js               — CPValidator, PhoneValidator
+│   │  ├── logger.js                   — Logging unificado con prefijos emoji
+│   │  ├── patternRegistry.js          — 100+ regex patterns centralizados
+│   │  ├── messageUtils.js             — cleanBotResponse, getFirstName, etc
+│   │  ├── zoneChecker.js              — Detección de zona y viabilidad de entrega
+│   │  └── customerRegistry.js         — Registro y actualización de clientes
+│   │
+│   ├─ HANDLERS DE ESTADO (Estado activo)
+│   │  ├── activeStateHandlers.js      — detectCP, handleDistributorFlow, etc
+│   │  └── stateHelpers.js             — validateName, isGoodbye, etc
+│   │
+│   ├─ SERVICE LAYER (Orquestación de servicios)
+│   │  ├── claudeWrappers.js           — Funciones contextuales de Claude
+│   │  ├── escalationManager.js        — Escalaciones a Wig, notificaciones
+│   │  └── sessionUpdaters.js          — Actualizaciones atómicas de sesión
+│   │
+│   ├─ CONFIGURACIÓN (Config y esquemas)
+│   │  ├── config.js                   — Configuración centralizada
+│   │  └── sheetSchemas.js             — Esquemas de las 7 pestañas Sheets
+│   │
+│   ├─ STATE MACHINE (Control de flujo)
+│   │  ├── stateMachine.js             — Validación de transiciones de estado
+│   │  └── flowOrchestrator.js         — Coordinación del flujo de mensajes
+│   │
+│   ├─ DOCUMENTACIÓN
+│   │  ├── ARCHITECTURE.md             — Descripción completa de módulos
+│   │  ├── MODULE_GUIDE.md             — Guía de importación y patrones
+│   │  └── MIGRATION_PROGRESS.md       — Progreso de migración de botLogic.js
+│   │
+│   ├─ CONFIGURACIÓN DEL PROYECTO
+│   │  ├── .gitignore
+│   │  ├── package.json
+│   │  └── CLAUDE.md (este archivo)
+│   │
 ├── public/
-│   └── index.html               — Dashboard de conversaciones
-└── logs/                        — Logs de Railway para analizar (NO se suben a git)
-    └── .gitkeep
+│   └── index.html                     — Dashboard de conversaciones
+│
+├── logs/                              — Logs de Railway (NO se suben a git)
+│   └── .gitkeep
+│
+└── [Otros archivos de config]
+    ├── .railwayrc / railway.json      — Configuración Railway
+    └── [variables de entorno]
 ```
+
+**Total: 32 archivos** (10 servicios originales + 16 módulos nuevos + 3 docs + 3 otros)
 
 ---
 
