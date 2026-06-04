@@ -1481,7 +1481,7 @@ async function handleActive(phone, message, session) {
 
       // SEGURIDAD: 500+ bultos = mayoreo real → escalar a Wig en CÓDIGO,
       // sin depender de que el LLM emita ESCALAR_A_WIG (lead de alto valor).
-      if (totalBultos >= 500) {
+      if (totalBultos >= 480) {
         await notifyWig(phone, session, `Mayoreo real: ${totalBultos} bultos (~${Math.round(totalBultos / 40)} ton) — "${message.substring(0, 60)}"`);
         await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
         sheetsService.updateSegmento(phone, 'Mayoreo / Reventa').catch(() => {});
@@ -1604,14 +1604,9 @@ async function handleActive(phone, message, session) {
 
     if (ciudadBuscar.length > 2) {
       try {
-        const sucursal = await sheetsService.findCityInSucursales(ciudadBuscar);
-
-        let respuestaSucursal;
-        if (sucursal) {
-          respuestaSucursal = `¡Sí hay cobertura cerca de ti en ${sucursal.ciudad}! 😊\n¿Prefieres pasar a recoger tu pedido o te lo enviamos a domicilio? 📦`;
-        } else {
-          respuestaSucursal = `En ${ciudadBuscar} no tenemos cobertura directa por el momento 😔\nPero te enviamos por paquetería a domicilio a todo México 📦\n¿Me dices tu CP para decirte exactamente cuánto tarda?`;
-        }
+        // No revelar ubicaciones de sucursales ni confirmar "cobertura cerca de ti".
+        // Pedir CP y dejar que la lógica de canal (CDMX/Edomex → asesor; resto → paquetería) decida.
+        const respuestaSucursal = '¡Claro que te podemos ayudar! 😊 ¿Me das tu código postal? 📍 Con eso te digo las opciones de entrega que tenemos para ti.';
 
         // El mensaje de usuario ya fue agregado al historial en línea ~998
         session.conversationHistory.push({ role: 'assistant', content: respuestaSucursal });
@@ -1722,33 +1717,11 @@ async function handleActive(phone, message, session) {
       `historial=${session.conversationHistory.length} msgs`
     );
 
-    const cpGuardado = session.customer?.cp || '';
-
     // ESCALAR DIRECTAMENTE a Wig (sin pedir CP primero)
     const motivo = session.tempData?.nombre || message.substring(0, 50) || 'consulta';
     await notifyWig(phone, session, motivo);
     sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
     return 'Ahorita te conecto con un asesor 🙌';
-
-    // Ya tiene CP → usarlo directamente
-    const cpNum  = parseInt(cpGuardado.replace(/\D/g, ''), 10);
-    const prefix = parseInt(String(cpNum).padStart(5, '0').substring(0, 2), 10);
-    const esLocal = (cpNum >= 1000 && cpNum <= 16999) || (prefix >= 50 && prefix <= 57);
-
-    if (esLocal) {
-      await notifyWig(phone, session, `CP guardado: ${cpGuardado} — zona local`);
-      sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
-      const nombre = primerNombre(session.customer?.name || '');
-      return nombre
-        ? `¡Listo, ${nombre}! 😊 Un asesor te contactará en breve por este mismo WhatsApp.`
-        : '¡Listo! 😊 Un asesor te contactará en breve por este mismo WhatsApp.';
-    }
-
-    // CP foráneo → cerrar con tienda sin escalar
-    const nombre = primerNombre(session.customer?.name || '');
-    return nombre
-      ? `${pick(CHANNEL_VARIANTS)(nombre)} ${pick(CLOSING_VARIANTS)}`
-      : `Te mandamos por paquetería a todo México 📦 Haz tu pedido en llabanaenlinea.com ${pick(CLOSING_VARIANTS)}`;
   }
 
   // Detectar intención de compra pendiente
@@ -1885,8 +1858,8 @@ async function handleAskingCpBeforeEscalation(phone, message, session) {
   // CP foráneo — verificar cantidad antes de cerrar
   const cantidadSesion = session.tempData?.cantidadBultos || 0;
 
-  if (cantidadSesion >= 500) {
-    // 500+ bultos en provincia → camión completo → escalar
+  if (cantidadSesion >= 480) {
+    // 480+ bultos (12+ ton) en provincia → camión completo → escalar
     await notifyWig(phone, session, `CP foráneo ${cp} — mayoreo real: ${cantidadSesion} bultos`);
     sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
     return nombre
@@ -1894,7 +1867,7 @@ async function handleAskingCpBeforeEscalation(phone, message, session) {
       : '¡Listo! 😊 Un asesor te contactará para cotizar el flete del camión completo.';
   }
 
-  if (cantidadSesion > 10 && cantidadSesion < 500) {
+  if (cantidadSesion > 10 && cantidadSesion < 480) {
     sessionManager.updateSession(phone, { flowState: 'active' });
     return `Para esa cantidad fuera de la zona centro no contamos con servicio de entrega disponible por el momento 😔\n\nSi en algún momento reduces a pedidos de hasta 10 bultos o tu volumen llega a camión completo (12 toneladas), aquí estamos con gusto 🌾\n\nMientras tanto, si necesitas algún producto en menor cantidad puedo ayudarte a encontrarlo en la tienda.`;
   }
@@ -2257,9 +2230,26 @@ async function notifyWig(phone, session, motivo = '', resumen = '') {
   try {
     const result = await twilioService.sendMessage(wigNumber, msg);
     console.log(`📲 Wig notificado | sid: ${result.sid} | status: ${result.status} | errorCode: ${result.errorCode ?? 'none'} | errorMsg: ${result.errorMessage ?? 'none'}`);
+
+    // Respaldo: si Twilio marca error (p.ej. 63016 fuera de ventana 24h) o status de fallo,
+    // la escalación NO llegó → guardarla en la cola para recuperarla con /pendientes.
+    const falloEnvio = !!result.errorCode ||
+      ['failed', 'undelivered'].includes((result.status || '').toLowerCase());
+    if (falloEnvio) {
+      await colaEscalaciones.agregarEscalacion({ phone, nombre, resumen: resumenLimpio || motivo, timestamp: Date.now() });
+      await sessionManager.updateSession(phone, { tempData: { ...session.tempData, escalacionPendiente: true } });
+      console.warn(`⚠️ [COLA] Mensaje a Wig falló (errorCode=${result.errorCode ?? 'n/a'}, status=${result.status}) — escalación de ${nombre} guardada en cola`);
+    }
     return { fueraHorario: false };
   } catch (err) {
     console.error(`❌ Error notificando a Wig | code: ${err.code} | status: ${err.status} | msg: ${err.message} | moreInfo: ${err.moreInfo}`);
+    try {
+      await colaEscalaciones.agregarEscalacion({ phone, nombre, resumen: resumenLimpio || motivo, timestamp: Date.now() });
+      await sessionManager.updateSession(phone, { tempData: { ...session.tempData, escalacionPendiente: true } });
+      console.warn(`⚠️ [COLA] Excepción al notificar a Wig — escalación de ${nombre} guardada en cola`);
+    } catch (qErr) {
+      console.error('Error guardando escalación en cola:', qErr.message);
+    }
     return { fueraHorario: false };
   }
 }
