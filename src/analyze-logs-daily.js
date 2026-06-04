@@ -123,17 +123,27 @@ function detectProblematicConversations(logContent) {
   let conversationIndex = 0;
 
   // Patrones para detectar problemas
-  const nombreMalCapturadoPattern = /¿tu nombre es \*(.{20,})\*\?/i;
+  // Captura el nombre confirmado sin importar su longitud
+  const nombreMalCapturadoPattern = /¿tu nombre es \*([^*]+)\*\?/i;
+  // Sospechoso por CONTENIDO, no por longitud: preguntas, dígitos, frases largas o palabras de intención
+  const nombreSospechoso = (n) =>
+    /[?¿!]/.test(n) ||
+    /\d/.test(n) ||
+    n.trim().split(/\s+/).length >= 6 ||
+    /\b(precio|quiero|cuanto|cuánto|informaci|necesito|busco|hacer|interesa|forrajer|mayoreo|toneladas?|bultos?|hola|gracias)\b/i.test(n);
   const escalacionSinEscalarPattern = /\[DIAGNOSTICO:ESCALACION\].*?📤.*?(?!escalad|wig|asesor)/i;
   const followupIncorrectoPattern = /\[FOLLOWUP-A\].*?nombre:\s*([a-záéíóú\s]+)/i;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Problema 1: Nombre mal capturado (¿tu nombre es *[texto largo]*)
+    // Problema 1: Nombre mal capturado (¿tu nombre es *[texto largo o contiene palabras clave]*)
     if (nombreMalCapturadoPattern.test(line)) {
       const match = line.match(nombreMalCapturadoPattern);
       const nombreCapturado = match ? match[1] : 'desconocido';
+
+      // Solo marcar como problema si el nombre es SOSPECHOSO por contenido
+      if (!nombreSospechoso(nombreCapturado)) continue; // nombre válido → no es problema
 
       // Buscar conversación completa alrededor de esta línea
       const start = Math.max(0, i - 3);
@@ -143,7 +153,7 @@ function detectProblematicConversations(logContent) {
       problematicConversations.push({
         number: ++conversationIndex,
         phone: extractPhoneFromLine(line),
-        problem: '🔴 Nombre mal capturado (respuesta muy larga o contiene palabras clave)',
+        problem: '🔴 Nombre mal capturado (contiene preguntas, dígitos o palabras de intención)',
         nameDetected: nombreCapturado,
         logExact: logContext,
         severity: 'CRÍTICO',
