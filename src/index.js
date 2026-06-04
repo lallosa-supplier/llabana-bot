@@ -60,6 +60,7 @@ app.get('/health', async (req, res) => {
   const checks = {
     status: 'ok',
     service: 'llabana-bot',
+    commit: (process.env.RAILWAY_GIT_COMMIT_SHA || 'local').substring(0, 7),
     timestamp: new Date().toISOString(),
     redis: 'unknown',
     uptime: Math.floor(process.uptime()) + 's',
