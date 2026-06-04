@@ -1478,6 +1478,18 @@ async function handleActive(phone, message, session) {
         tempData: { ...session.tempData, cantidadBultos: totalBultos },
       });
       console.log(`📦 Cantidad detectada: ${totalBultos} bultos | ${phone}`);
+
+      // SEGURIDAD: 500+ bultos = mayoreo real → escalar a Wig en CÓDIGO,
+      // sin depender de que el LLM emita ESCALAR_A_WIG (lead de alto valor).
+      if (totalBultos >= 500) {
+        await notifyWig(phone, session, `Mayoreo real: ${totalBultos} bultos (~${Math.round(totalBultos / 40)} ton) — "${message.substring(0, 60)}"`);
+        await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
+        sheetsService.updateSegmento(phone, 'Mayoreo / Reventa').catch(() => {});
+        const nombreMay = primerNombre(session.customer?.name || '');
+        return nombreMay
+          ? `¡${nombreMay}, para ese volumen te paso directo con un asesor! 🙌 En breve te contacta por aquí.`
+          : '¡Para ese volumen te paso directo con un asesor! 🙌 En breve te contacta por aquí.';
+      }
     }
   }
 
