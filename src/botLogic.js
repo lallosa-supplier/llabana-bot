@@ -864,7 +864,9 @@ const NO_ES_NOMBRE = /^(saber|buscar|cotizar|preguntar|consultar|verificar|checa
 
 async function handleAskingName(phone, message, session) {
   const intent = session.tempData?.intentPrevio;
-  if (isProveedor(intent || message)) {
+  // SOLO usar intentPrevio para detectar distribuidor/proveedor
+  // No evaluar el mensaje actual (el nombre del cliente) como intención
+  if (isProveedor(intent)) {
     await sessionManager.updateSession(phone, {
       flowState: 'active',
       tempData: {
@@ -874,7 +876,7 @@ async function handleAskingName(phone, message, session) {
     });
     return '¡Gracias por tu interés en ser proveedor de Llabana! 😊\n\n¿Qué producto o servicio ofreces?';
   }
-  if (isDistribuidor(intent || message)) {
+  if (isDistribuidor(intent)) {
     await sessionManager.updateSession(phone, {
       flowState: 'active',
       tempData: { ...session.tempData, infoDistribuidor: { esperando: 'ciudad' } },
