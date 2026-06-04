@@ -17,32 +17,6 @@
 ⚠️  CONVERSACIONES PROBLEMÁTICAS DETECTADAS:
 
 CONVERSACIÓN PROBLEMÁTICA #1
-  Severidad: CRÍTICO
-  Número: +521247108057
-  Problema: 🔴 Nombre mal capturado (respuesta muy larga o contiene palabras clave)
-  Nombre detectado: "Eduardo Roque Gonzalez"
-  Log exacto:
-    📤 [whatsapp:+5212471080571]: Gracias Eduardo 😊 ¿Me das también tu apellido para tener tus datos completos?
-    📨 [whatsapp:+5212471080571]: Roque gonzalez
-    🔗 detectarOrigen: "roque gonzalez" → Directo
-    📤 [whatsapp:+5212471080571]: Solo para confirmar — ¿tu nombre es *Eduardo Roque Gonzalez*? 😊
-    📨 [whatsapp:+5212471080571]: Si
-    🔗 detectarOrigen: "si" → Directo
-
-CONVERSACIÓN PROBLEMÁTICA #2
-  Severidad: CRÍTICO
-  Número: +521777191769
-  Problema: 🔴 Nombre mal capturado (respuesta muy larga o contiene palabras clave)
-  Nombre detectado: "Gerardo Ugalde Alarcón"
-  Log exacto:
-    📤 [whatsapp:+5217771917694]: No capté bien tu apellido 😅 ¿Me lo escribes solito? Por ejemplo: García, López 😊
-    📨 [whatsapp:+5217771917694]: Gerardo Ugalde Alarcón
-    🔗 detectarOrigen: "gerardo ugalde alarcon" → Directo
-    📤 [whatsapp:+5217771917694]: Solo para confirmar — ¿tu nombre es *Gerardo Ugalde Alarcón*? 😊
-    📨 [whatsapp:+5217771917694]: Si
-    🔗 detectarOrigen: "si" → Directo
-
-CONVERSACIÓN PROBLEMÁTICA #3
   Severidad: IMPORTANTE
   Número: desconocido
   Problema: 🟡 DIAGNOSTICO:ESCALACION detectado pero bot no escaló
@@ -54,7 +28,7 @@ CONVERSACIÓN PROBLEMÁTICA #3
     📨 [whatsapp:+5217771917694]: 62790
     🔗 detectarOrigen: "62790" → Directo
 
-CONVERSACIÓN PROBLEMÁTICA #4
+CONVERSACIÓN PROBLEMÁTICA #2
   Severidad: IMPORTANTE
   Número: desconocido
   Problema: 🟡 DIAGNOSTICO:ESCALACION detectado pero bot no escaló
@@ -66,7 +40,7 @@ CONVERSACIÓN PROBLEMÁTICA #4
     📨 [whatsapp:+5217771917694]: Gracias
     🔗 detectarOrigen: "gracias" → Directo
 
-CONVERSACIÓN PROBLEMÁTICA #5
+CONVERSACIÓN PROBLEMÁTICA #3
   Severidad: IMPORTANTE
   Número: desconocido
   Problema: 🟡 DIAGNOSTICO:ESCALACION detectado pero bot no escaló
@@ -78,7 +52,7 @@ CONVERSACIÓN PROBLEMÁTICA #5
     📨 [whatsapp:+5217771917694]: Por ahora no
     🔗 detectarOrigen: "por ahora no" → Directo
 
-CONVERSACIÓN PROBLEMÁTICA #6
+CONVERSACIÓN PROBLEMÁTICA #4
   Severidad: IMPORTANTE
   Número: desconocido
   Problema: 🟡 DIAGNOSTICO:ESCALACION detectado pero bot no escaló
@@ -90,7 +64,7 @@ CONVERSACIÓN PROBLEMÁTICA #6
     📨 [whatsapp:+5217771917694]: Si,cotizar el envío de 20 toneladas de feedlot 14
     🔗 detectarOrigen: "si,cotizar el envio de 20 toneladas de feedlot 14" → Directo
 
-CONVERSACIÓN PROBLEMÁTICA #7
+CONVERSACIÓN PROBLEMÁTICA #5
   Severidad: IMPORTANTE
   Número: desconocido
   Problema: 🟡 DIAGNOSTICO:ESCALACION detectado pero bot no escaló
@@ -336,7 +310,7 @@ module.exports = {
 };
 
 
-───── src/analyze-logs-daily.js (404 líneas) ─────
+───── src/analyze-logs-daily.js (414 líneas) ─────
 #!/usr/bin/env node
 /**
  * Análisis Diario de Logs en Producción
@@ -462,17 +436,27 @@ function detectProblematicConversations(logContent) {
   let conversationIndex = 0;
 
   // Patrones para detectar problemas
-  const nombreMalCapturadoPattern = /¿tu nombre es \*(.{20,})\*\?/i;
+  // Captura el nombre confirmado sin importar su longitud
+  const nombreMalCapturadoPattern = /¿tu nombre es \*([^*]+)\*\?/i;
+  // Sospechoso por CONTENIDO, no por longitud: preguntas, dígitos, frases largas o palabras de intención
+  const nombreSospechoso = (n) =>
+    /[?¿!]/.test(n) ||
+    /\d/.test(n) ||
+    n.trim().split(/\s+/).length >= 6 ||
+    /\b(precio|quiero|cuanto|cuánto|informaci|necesito|busco|hacer|interesa|forrajer|mayoreo|toneladas?|bultos?|hola|gracias)\b/i.test(n);
   const escalacionSinEscalarPattern = /\[DIAGNOSTICO:ESCALACION\].*?📤.*?(?!escalad|wig|asesor)/i;
   const followupIncorrectoPattern = /\[FOLLOWUP-A\].*?nombre:\s*([a-záéíóú\s]+)/i;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Problema 1: Nombre mal capturado (¿tu nombre es *[texto largo]*)
+    // Problema 1: Nombre mal capturado (¿tu nombre es *[texto largo o contiene palabras clave]*)
     if (nombreMalCapturadoPattern.test(line)) {
       const match = line.match(nombreMalCapturadoPattern);
       const nombreCapturado = match ? match[1] : 'desconocido';
+
+      // Solo marcar como problema si el nombre es SOSPECHOSO por contenido
+      if (!nombreSospechoso(nombreCapturado)) continue; // nombre válido → no es problema
 
       // Buscar conversación completa alrededor de esta línea
       const start = Math.max(0, i - 3);
@@ -482,7 +466,7 @@ function detectProblematicConversations(logContent) {
       problematicConversations.push({
         number: ++conversationIndex,
         phone: extractPhoneFromLine(line),
-        problem: '🔴 Nombre mal capturado (respuesta muy larga o contiene palabras clave)',
+        problem: '🔴 Nombre mal capturado (contiene preguntas, dígitos o palabras de intención)',
         nameDetected: nombreCapturado,
         logExact: logContext,
         severity: 'CRÍTICO',
@@ -742,7 +726,7 @@ module.exports = {
 };
 
 
-───── src/botLogic.js (2388 líneas) ─────
+───── src/botLogic.js (2400 líneas) ─────
 /**
  * Lógica central del bot de Llabana — flujo conversacional natural.
  *
@@ -2223,6 +2207,18 @@ async function handleActive(phone, message, session) {
         tempData: { ...session.tempData, cantidadBultos: totalBultos },
       });
       console.log(`📦 Cantidad detectada: ${totalBultos} bultos | ${phone}`);
+
+      // SEGURIDAD: 500+ bultos = mayoreo real → escalar a Wig en CÓDIGO,
+      // sin depender de que el LLM emita ESCALAR_A_WIG (lead de alto valor).
+      if (totalBultos >= 500) {
+        await notifyWig(phone, session, `Mayoreo real: ${totalBultos} bultos (~${Math.round(totalBultos / 40)} ton) — "${message.substring(0, 60)}"`);
+        await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
+        sheetsService.updateSegmento(phone, 'Mayoreo / Reventa').catch(() => {});
+        const nombreMay = primerNombre(session.customer?.name || '');
+        return nombreMay
+          ? `¡${nombreMay}, para ese volumen te paso directo con un asesor! 🙌 En breve te contacta por aquí.`
+          : '¡Para ese volumen te paso directo con un asesor! 🙌 En breve te contacta por aquí.';
+      }
     }
   }
 
