@@ -79,6 +79,27 @@ async function marcarEnviado(key, ttlSeconds) {
   }
 }
 
+// Reserva atómica: marca la clave SOLO si no existía (SET NX).
+// Devuelve true si ESTE ciclo la reservó (debe enviar), false si otro ya la tomó.
+// Elimina la condición de carrera que mandaba el follow-up dos veces.
+async function reclamar(key, ttlSeconds) {
+  const redis = getRedis();
+  if (!redis) {
+    if (_memFallback.has(key)) return false;
+    _memFallback.add(key);
+    return true;
+  }
+  try {
+    const res = await redis.set(key, '1', 'EX', ttlSeconds, 'NX');
+    if (res === 'OK') { _memFallback.add(key); return true; }
+    return false;
+  } catch {
+    if (_memFallback.has(key)) return false;
+    _memFallback.add(key);
+    return true;
+  }
+}
+
 // ── Horario válido ────────────────────────────────────────────────────────────
 
 function dentroDeHorario() {
@@ -179,20 +200,19 @@ async function runFollowUps() {
           inactivo >= DOS_HORAS &&
           dentroDeHorarioFollowUpA()) {
         const keyA = `followup:A:${phone}`;
-        if (!(await yaEnviado(keyA))) {
+        // Reservar ANTES de enviar (atómico) para no duplicar si dos ciclos se traslapan
+        if (await reclamar(keyA, 86400)) {
           const mensaje = buildFollowUpA(nombre, session);
           await enviarFollowUp(phone, mensaje, nombre, 'A', session.flowState);
-          await marcarEnviado(keyA, 86400); // no repetir en 24h
         }
       }
 
       // ── Follow-up C — cliente escalado 23h sin atención ───────────────────
       if (ESTADOS_ESCALADO.has(session.flowState) && inactivo >= VEINTITRES_HORAS) {
         const keyC = `followup:C:${phone}`;
-        if (!(await yaEnviado(keyC))) {
+        if (await reclamar(keyC, 86400 * 7)) {
           const mensaje = buildFollowUpC(nombre);
           await enviarFollowUp(phone, mensaje, nombre, 'C', session.flowState);
-          await marcarEnviado(keyC, 86400 * 7); // no repetir en 7 días
 
           // Marcar en sesión para detectar su respuesta en botLogic
           await sessionManager.updateSession(phone, {
