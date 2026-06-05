@@ -1,0 +1,94 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║              ANÁLISIS DETALLADO DE LOGS - DÍA A DÍA                          ║
+║                      Período: 2026-06-04 a 2026-06-05                           ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+📋 RESUMEN GENERAL
+─────────────────────────────────────────────────────────────────────────────────
+📁 Archivo: logs.1780673510457.log
+📅 Fechas: 2026-06-04 a 2026-06-05
+📊 Total líneas de log: 1001
+📍 Días analizados: 2
+
+═════════════════════════════════════════════════════════════════════════════════
+
+┌─ 📅 DÍA: 2026-06-04 ─────────────────────────────────────────────────────────┐
+│
+│ ⏰ PERÍODO
+│    Inicio:     2026-06-04T05:02:31Z
+│    Fin:        2026-06-04T23:49:59Z
+│    Duración:   7 bloques de eventos
+│
+│ 📊 ESTADÍSTICAS DEL DÍA
+│    Líneas de log:       652
+│    Conversaciones:      4
+│    Escalaciones:        0
+│    Errores detectados:  0
+│    Problemas:           0
+│
+│ 📱 CONVERSACIONES
+│    ✅ +5213330205936: 6 mensajes
+│    ✅ +5215543682842: 4 mensajes
+│    ✅ +5219212652984: 2 mensajes
+│    ✅ +5215648076361: 1 mensajes
+│
+└───────────────────────────────────────────────────────────────────────────────┘
+
+✂️  ─────────────────────────────────────────────────────────────────────────────
+   CORTE DE CONTINUIDAD ENTRE DÍAS
+   Fin de 2026-06-04:        2026-06-04T23:49:59Z
+   Inicio de 2026-06-05: 2026-06-05T00:05:00Z
+
+   ➜ PRÓXIMO ANÁLISIS COMENZARÁ DESDE: 2026-06-04T23:49:59Z
+
+═════════════════════════════════════════════════════════════════════════════════
+
+┌─ 📅 DÍA: 2026-06-05 ─────────────────────────────────────────────────────────┐
+│
+│ ⏰ PERÍODO
+│    Inicio:     2026-06-05T00:05:00Z
+│    Fin:        2026-06-05T15:27:56Z
+│    Duración:   3 bloques de eventos
+│
+│ 📊 ESTADÍSTICAS DEL DÍA
+│    Líneas de log:       349
+│    Conversaciones:      4
+│    Escalaciones:        1
+│    Errores detectados:  0
+│    Problemas:           0
+│
+│ 📱 CONVERSACIONES
+│    ✅ +5215546680886: 10 mensajes
+│    ✅ +5217621112475: 4 mensajes
+│    ✅ +5219212652984: 4 mensajes
+│    ✅ +5215631046895: 2 mensajes
+│
+└───────────────────────────────────────────────────────────────────────────────┘
+
+📝 RESUMEN FINAL DEL PERÍODO
+─────────────────────────────────────────────────────────────────────────────────
+Total de días:              2
+Rango de fechas:            2026-06-04 a 2026-06-05
+Total de conversaciones:    8
+Problemas detectados:       0
+Escalaciones:               1
+Estado general:             ✅ SIN PROBLEMAS
+
+🎯 PUNTOS DE CONTINUIDAD PARA MAÑANA
+─────────────────────────────────────────────────────────────────────────────────
+ESTE ANÁLISIS CUBRIÓ:
+  • Inicio:  2026-06-04T00:00:00Z
+  • Fin:     2026-06-05T23:59:59Z
+
+EL PRÓXIMO ANÁLISIS DEBE COMENZAR DESDE:
+  ➜ 2026-06-05T23:59:59Z (fin de este período)
+  ➜ Esto evita duplicados y saltos
+
+VALIDACIÓN:
+  ✓ Si el nuevo log comienza después de 2026-06-05T23:59:59Z → continuidad OK
+  ✓ Si hay overlap → marcar en el reporte para evitar contar 2 veces
+
+═════════════════════════════════════════════════════════════════════════════════
+
+Generado: 2026-06-05T15:40:25.772Z
+Versión: Análisis Detallado v2 (con transcripciones y detección de problemas)
