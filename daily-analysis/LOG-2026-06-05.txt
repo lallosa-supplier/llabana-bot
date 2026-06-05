@@ -1,0 +1,157 @@
+═══════════════════════════════════════════════════════════════════════════════
+                         LOG DE CONVERSACIONES
+═══════════════════════════════════════════════════════════════════════════════
+
+📊 INFORMACIÓN GENERAL
+─────────────────────────────────────────────────────────────────────────────
+Archivo: logs.1780673510457.log
+Generado: 2026-06-05T15:48:15.748Z
+Total de conversaciones: 7
+
+PERÍODO A ANALIZAR:
+├─ Desde: 2026-06-04T05:02:31
+└─ Hasta: 2026-06-05T15:27:56
+
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215631046895
+│ Inicio:   2026-06-05T06:49:25
+│ Fin:      2026-06-05T06:49:26
+│ Mensajes: 2
+│
+│ 👤 [2026-06-05T06:49:25] USUARIO
+│    Hola, me mandaron aqui desde la tienda
+│ 🤖 [2026-06-05T06:49:26] BOT
+│    ¡Hola! 👋 Llabana, alimento balanceado para tus animales 🌾 ¿Estás en México?
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5219212652984
+│ Inicio:   2026-06-04T05:26:32
+│ Fin:      2026-06-05T02:34:32
+│ Mensajes: 6
+│
+│ 👤 [2026-06-04T05:26:32] USUARIO
+│    Si
+│ 🤖 [2026-06-04T05:26:37] BOT
+│    Para 1 bulto el precio del producto es $425 (Lamb Tech) o $351 (Cría Ovina 16) 🌾
+│ 👤 [2026-06-05T02:33:46] USUARIO
+│    No ayudarme
+│ 🤖 [2026-06-05T02:33:52] BOT
+│    El problema es que el costo de envío lo calcula la paquetería según tu CP — yo no tengo acceso a ese dato desde aquí.
+│ 👤 [2026-06-05T02:34:32] USUARIO
+│    Si
+│ 🤖 [2026-06-05T02:34:32] BOT
+│    Ahorita te conecto con un asesor 🙌
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5217621112475
+│ Inicio:   2026-06-05T00:43:54
+│ Fin:      2026-06-05T00:44:06
+│ Mensajes: 4
+│
+│ 👤 [2026-06-05T00:43:54] USUARIO
+│    Hola, quiero mas informes por precio de tonelada omoline
+│ 🤖 [2026-06-05T00:43:54] BOT
+│    ¡Hola! 👋 Soy el asistente de Llabana, tu aliado en alimento balanceado 🌾 ¿Estás en México?
+│ 👤 [2026-06-05T00:44:03] USUARIO
+│    Y salvado semillina ?
+│ 🤖 [2026-06-05T00:44:06] BOT
+│    ¿Con quién tengo el gusto? 😊
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215546680886
+│ Inicio:   2026-06-05T00:13:12
+│ Fin:      2026-06-05T00:14:22
+│ Mensajes: 10
+│
+│ 👤 [2026-06-05T00:13:12] USUARIO
+│    Hola, quiero mas informes
+│ 🤖 [2026-06-05T00:13:12] BOT
+│    ¡Bienvenido! 🌾 Soy el asistente de Llabana. ¿Nos escribes desde México?
+│ 👤 [2026-06-05T00:13:52] USUARIO
+│    Si de la cdmx
+│ 🤖 [2026-06-05T00:13:52] BOT
+│    ¿Con quién tengo el gusto? 😊 Un asesor te contactará en breve.
+│ 👤 [2026-06-05T00:13:56] USUARIO
+│    Ixchel
+│ 🤖 [2026-06-05T00:13:58] BOT
+│    Gracias Ixchel 😊 ¿Me das también tu apellido para tener tus datos completos?
+│ 👤 [2026-06-05T00:14:18] USUARIO
+│    Ixchel viveros
+│ 🤖 [2026-06-05T00:14:18] BOT
+│    Solo para confirmar — ¿tu nombre es *Ixchel Viveros*? 😊
+│ 👤 [2026-06-05T00:14:20] USUARIO
+│    Si
+│ 🤖 [2026-06-05T00:14:22] BOT
+│    ¡Mucho gusto, Ixchel! 😊 Un asesor te contactará en breve por este WhatsApp 🙌
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215543682842
+│ Inicio:   2026-06-04T21:06:01
+│ Fin:      2026-06-04T21:06:26
+│ Mensajes: 4
+│
+│ 👤 [2026-06-04T21:06:01] USUARIO
+│    Buenas tardes..les agradezco pero ya conseguí el producto.  Muchas gracias!
+│ 🤖 [2026-06-04T21:06:06] BOT
+│    Qué bueno Alejandro 😊 Cuando necesites más ya sabes dónde encontrarnos 🌾
+│ 👤 [2026-06-04T21:06:26] USUARIO
+│    Gracias!!
+│ 🤖 [2026-06-04T21:06:26] BOT
+│    ¡Hasta luego! 👋😊
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5213330205936
+│ Inicio:   2026-06-04T16:26:32
+│ Fin:      2026-06-04T16:29:42
+│ Mensajes: 6
+│
+│ 👤 [2026-06-04T16:26:32] USUARIO
+│    Hola
+│ 🤖 [2026-06-04T16:26:32] BOT
+│    Ya avisé al asesor, te contactará en breve 🙌
+│ 👤 [2026-06-04T16:29:22] USUARIO
+│    Pueden venderme en Colotlán
+│ 🤖 [2026-06-04T16:29:22] BOT
+│    ¡Qué interesante lo que quieres armar! 🌾
+│ 👤 [2026-06-04T16:29:42] USUARIO
+│    Más de 500
+│ 🤖 [2026-06-04T16:29:42] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215648076361
+│ Inicio:   2026-06-04T14:47:49
+│ Fin:      2026-06-04T14:47:49
+│ Mensajes: 1
+│
+│ 👤 [2026-06-04T14:47:49] USUARIO
+│    /pendientes
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+FIN DEL LOG
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ COPIAR TODO ESTO A CLAUDE.AI PARA ANALIZAR
