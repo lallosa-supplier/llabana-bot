@@ -19,7 +19,6 @@ const horarioService    = require('./horarioService');
 const colaEscalaciones  = require('./colaEscalaciones');
 const { FLOW_STATES, TIME_CONSTANTS } = require('./constants');
 const { CPValidator, PhoneValidator } = require('./validators');
-const PatternRegistry   = require('./patternRegistry');
 const { messageUtils, getFirstName } = require('./messageUtils');
 const logger = require('./logger');
 
@@ -123,81 +122,6 @@ function detectarOrigen(message) {
   return 'Directo';
 }
 
-function isOutsideMexico(text) {
-  return /^no$/i.test(text.trim()) || PatternRegistry.test('OUTSIDE_MEXICO', text);
-}
-
-function isEscalationProfile(text) {
-  // Excluir preguntas de cobertura ("¿tienen distribuidor en X?"): son clientes
-  // buscando dónde comprar, no perfiles de mayoreo. Misma guarda que isDistribuidor.
-  const esPreguntaCobertura =
-    /tienen?\s+(alg[uú]n?\s+)?(distribuidor|tienda|sucursal|punto\s+de\s+venta)\s+(en|cerca|por)/i.test(text) ||
-    /hay\s+(alg[uú]n?\s+)?(distribuidor|tienda|sucursal)\s+(en|cerca|por)/i.test(text) ||
-    /d[oó]nde\s+(tienen?|hay|est[aá]n?)\s+(distribuidor|tienda|sucursal)/i.test(text);
-  if (esPreguntaCobertura) return false;
-  return PatternRegistry.test('ESCALATION_PROFILE', text.trim());
-}
-
-const DISTRIBUIDOR_PATTERNS = [
-  /\bdistribui[dr]/i, /\bser\s+distribuidor/i, /\bvender\s+sus\s+productos/i,
-  /\bfranquicia/i, /\brevendedor/i, /\bpunto\s+de\s+venta\s+propio/i,
-  /\bquiero\s+vender\b/i, /\bcomercializar/i, /\bdistribución\s+exclusiva/i,
-  /\bagente\s+de\s+ventas/i, /\bconvertirme\s+en\s+distribuidor/i,
-  /\bveterinaria\b/i,
-  /\bprecio(s)?\s+(para|de)\s+(veterinaria|tienda|negocio|reventa)/i,
-  /\bventa\s+en\s+(veterinaria|tienda|negocio)/i,
-  /\bpara\s+vender\b/i,
-  /\brevender\b/i,
-  /\bpunto\s+de\s+venta\b/i,
-];
-
-function isDistribuidor(text) {
-  // Excluir preguntas sobre si hay distribuidor/tienda en una ciudad
-  const esPreguntaCobertura = /tienen?\s+(alg[uú]n?\s+)?(distribuidor|tienda|sucursal|punto\s+de\s+venta)\s+(en|cerca|por)/i.test(text) ||
-    /hay\s+(alg[uú]n?\s+)?(distribuidor|tienda|sucursal)\s+(en|cerca|por)/i.test(text) ||
-    /d[oó]nde\s+(tienen?|hay|est[aá]n?)\s+(distribuidor|tienda|sucursal)/i.test(text);
-
-  if (esPreguntaCobertura) return false;
-  return PatternRegistry.test('DISTRIBUIDOR', text);
-}
-
-const PROVEEDOR_PATTERNS = [
-  /\bser\s+proveedor/i,
-  /\bquiero\s+proveer/i,
-  /\bsoy\s+proveedor/i,
-  /\bvenderle[s]?\s+(a\s+)?(llabana|ustedes)/i,
-  /\bofrecer(les?)?\s+(mis\s+)?(productos?|servicios?|insumos?|materia)/i,
-  /\bproveedor\s+de\s+llabana/i,
-  /\bcontacto\s+de\s+compras/i,
-  /\bdepartamento\s+de\s+compras/i,
-  /\bquiero\s+venderles/i,
-  /\bsoy\s+fabricante/i,
-  /\bproducimos?\b/i,
-  /\bimportador\b/i,
-  /\bexportador\b/i,
-  /\bmanufacturer\b/i,
-  /\bsupplier\b/i,
-  /\bfabricante\b/i,
-  /\bwe\s+(are|make|produce|manufacture|supply)/i,
-  /\bresponsable\s+de\s+compras/i,
-  /\bpurchasing\s+(manager|department|contact)/i,
-  /\bcooperation\b/i,
-  /\bpartnership\b/i,
-  /\bbusiness\s+opportunity/i,
-];
-
-function isProveedor(text) {
-  return PatternRegistry.test('PROVEEDOR', text);
-}
-
-function isRequestingHuman(text) {
-  return PatternRegistry.test('HUMAN_REQUEST', text.trim());
-}
-
-function isPriceQuestion(text) {
-  return PatternRegistry.test('PRICE_QUESTION', text.trim());
-}
-
 // ── Helpers de CP ─────────────────────────────────────────────────────────────
 
 /** CP 01000–16999 → CDMX */
@@ -239,7 +163,6 @@ function trimHistory(history, max = 20) {
 // ── Punto de entrada ──────────────────────────────────────────────────────────
 
 async function handleMessage(phone, messageBody) {
-  // Cerebro IA atiende a todos los clientes
   return require('./aiBot').handleMessageIA(phone, messageBody);
 }
 
