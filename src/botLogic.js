@@ -377,4 +377,13 @@ async function handleConfirmingName(phone, message, session) {
   return '¿Me confirmas tu nombre? 😊';
 }
 
+/**
+ * Notifica a Wig sobre una escalación
+ * (Delega a EscalationManager)
+ */
+async function notifyWig(phone, session, motivo, resumen = '') {
+  const escalationManager = require('./escalationManager');
+  return await escalationManager.notifyWig(phone, session, motivo, { resumen });
+}
+
 module.exports = { handleMessage, handleMediaMessage, notifyWig };
