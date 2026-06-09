@@ -405,6 +405,13 @@ async function updateOrderData(rowIndex, { totalOrders, totalSpent, segmento, fe
       spreadsheetId: SPREADSHEET_ID,
       resource: { valueInputOption: 'USER_ENTERED', data },
     });
+
+    // ✅ INVALIDAR CACHÉ: si se actualiza customer data, limpiar su entrada cacheada
+    if (phone) {
+      const phoneKey = normalizePhone(phone);
+      customerCache.delete(phoneKey);
+      console.log(`🗑️  Cache invalidado para ${phone}`);
+    }
   } catch (err) {
     console.error('sheetsService.updateOrderData error:', err.message);
     throw err;

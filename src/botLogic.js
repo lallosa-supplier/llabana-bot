@@ -316,7 +316,7 @@ async function handleMessage(phone, messageBody) {
       if (customer.rowIndex && !customer.name && session.tempData?.name) {
         sheetsService.updateOrderData(customer.rowIndex, {
           name: session.tempData.name,
-        }).catch(() => {});
+        }).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
       }
 
       // Recuperar escalación pendiente tras reinicio de servidor
@@ -460,7 +460,7 @@ async function handleMessage(phone, messageBody) {
       if (tieneInfoUtil && session.customer?.rowIndex) {
         sheetsService.appendNota(session.customer.rowIndex,
           `Info adicional del cliente: ${messageBody.trim().substring(0, 200)}`
-        ).catch(() => {});
+        ).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
       }
 
       session.conversationHistory.push({ role: 'user', content: messageBody });
@@ -598,7 +598,7 @@ async function handleAskingEntregaMx(phone, message, session) {
     await sessionManager.deleteSession(phone);
     const redis = sessionManager.getRedisClient?.();
     if (redis) {
-      await redis.set(`extranjero:${phone}`, '1', 'EX', 86400).catch(() => {});
+      await redis.set(`extranjero:${phone}`, '1', 'EX', 86400).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
     }
     return 'Entendido 🙏 Por el momento nuestros envíos son solo dentro de México. Si en algún momento consigues una dirección mexicana, con gusto te ayudamos 🌾';
   }
@@ -706,8 +706,8 @@ async function handleAskingMexico(phone, message, session) {
     if (esSucursal && localRowIndex) {
       sheetsService.updateOrderData(localRowIndex, {
         notas: `B2B — Sucursal/Distribuidor: ${message.substring(0, 100)}`,
-      }).catch(() => {});
-      sheetsService.appendTag(localRowIndex, 'Sucursal').catch(() => {});
+      }).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
+      sheetsService.appendTag(localRowIndex, 'Sucursal').catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
     }
 
     const customerLocal = {
@@ -827,7 +827,7 @@ async function handleAskingMexico(phone, message, session) {
 
   if (nombreLimpio) {
     if (rowIndex) {
-      sheetsService.updateOrderData(rowIndex, { name: nombreLimpio }).catch(() => {});
+      sheetsService.updateOrderData(rowIndex, { name: nombreLimpio }).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
     }
     await sessionManager.updateSession(phone, {
       flowState: 'active',
@@ -968,7 +968,7 @@ async function handleAskingName(phone, message, session) {
   if (nombre) {
     const first = primerNombre(nombre);
     if (session.customer?.rowIndex) {
-      sheetsService.updateOrderData(session.customer.rowIndex, { name: nombre }).catch(() => {});
+      sheetsService.updateOrderData(session.customer.rowIndex, { name: nombre }).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
     } else {
       // Fallback: cliente sin rowIndex — registrar ahora con el nombre
       console.log(`⚠️ [NOMBRE] rowIndex no encontrado para ${phone} — registrando con nombre ${nombre}`);
@@ -1140,7 +1140,7 @@ async function handleActive(phone, message, session) {
     sheetsService.appendConversationLog(
       phone, message,
       '[info adicional — escalación pendiente fuera de horario]'
-    ).catch(() => {});
+    ).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
 
     const wigAvisado = session.tempData?.wigAvisado || false;
     if (!wigAvisado) {
@@ -1178,7 +1178,7 @@ async function handleActive(phone, message, session) {
       if (respClaude && !respClaude.includes('ESCALAR_A_WIG')) {
         session.conversationHistory.push({ role: 'assistant', content: respClaude });
         await sessionManager.updateSession(phone, { conversationHistory: session.conversationHistory });
-        sheetsService.appendConversationLog(phone, message, respClaude).catch(() => {});
+        sheetsService.appendConversationLog(phone, message, respClaude).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
         return respClaude;
       }
     } catch (err) {
@@ -1196,7 +1196,7 @@ async function handleActive(phone, message, session) {
   // Solicitud de empleo o RH
   if (isRHRequest(message)) {
     await notifyWig(phone, session, `Solicitud de empleo o RH: "${message.substring(0, 100)}"`);
-    sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
+    await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
     return 'Ese tema lo maneja directamente nuestro equipo 😊 Ya les avisé — en breve te contactan por este mismo WhatsApp.';
   }
 
@@ -1211,7 +1211,7 @@ async function handleActive(phone, message, session) {
       return '¿Con quién tengo el gusto? 😊 En seguida te conecto con un asesor.';
     }
     await notifyWig(phone, session, `Cliente solicita asesor: "${message.substring(0, 80)}"`);
-    sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
+    await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
     return 'Ahorita te conecto con un asesor 🙌';
   }
 
@@ -1221,7 +1221,7 @@ async function handleActive(phone, message, session) {
 
   if (esSolicitudCorporativa) {
     await notifyWig(phone, session, `Solicitud corporativa/B2B: "${message.substring(0, 100)}"`);
-    sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
+    await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
     return 'Ahorita te conecto con la persona indicada 🙌';
   }
 
@@ -1399,7 +1399,7 @@ async function handleActive(phone, message, session) {
         `Cliente de ${zone} requiere atención personalizada`
       );
       if (session.customer?.rowIndex) {
-        sheetsService.appendNota(session.customer.rowIndex, `Cliente de ${zone} — atención por asesor`).catch(() => {});
+        sheetsService.appendNota(session.customer.rowIndex, `Cliente de ${zone} — atención por asesor`).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
       }
 
       if (fueraH3) {
@@ -1441,7 +1441,7 @@ async function handleActive(phone, message, session) {
       session.conversationHistory.push({ role: 'assistant', content: respuesta });
       session.conversationHistory = trimHistory(session.conversationHistory);
       await sessionManager.updateSession(phone, { conversationHistory: session.conversationHistory });
-      sheetsService.appendConversationLog(phone, message, respuesta).catch(() => {});
+      sheetsService.appendConversationLog(phone, message, respuesta).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
       return respuesta;
     }
   }
@@ -1456,7 +1456,7 @@ async function handleActive(phone, message, session) {
         await sessionManager.updateSession(phone, { tempData: session.tempData });
         if (session.customer?.rowIndex) {
           sheetsService.updateOrderData(session.customer.rowIndex,
-            { name: posibleNombre }).catch(() => {});
+            { name: posibleNombre }).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
         }
         console.log(`👤 Nombre detectado en active: ${posibleNombre}`);
       }
@@ -1476,17 +1476,26 @@ async function handleActive(phone, message, session) {
       totalBultos += cantidad;
     }
     if (totalBultos > 0) {
-      sessionManager.updateSession(phone, {
-        tempData: { ...session.tempData, cantidadBultos: totalBultos },
-      });
-      console.log(`📦 Cantidad detectada: ${totalBultos} bultos | ${phone}`);
+      // ✅ Race condition safety: usar ÚLTIMO valor, no sumar si hay race
+      // (Cliente envía "100" y "50" rápido → usar el más reciente, no sumar)
+      const ahora = Date.now();
+      const ultimaActualizacion = session.tempData?.cantidadActualizadoEn || 0;
+      if (ahora - ultimaActualizacion > 1000) {  // Más de 1 segundo → es nueva intención
+        await sessionManager.updateSession(phone, {
+          tempData: { ...session.tempData, cantidadBultos: totalBultos, cantidadActualizadoEn: ahora },
+        });
+        console.log(`📦 Cantidad detectada: ${totalBultos} bultos | ${phone}`);
+      }
+    }
+    if (session.tempData?.cantidadBultos && session.tempData?.cantidadBultos > 0) {
+      totalBultos = session.tempData.cantidadBultos;  // Usar el persistido
 
       // SEGURIDAD: 500+ bultos = mayoreo real → escalar a Wig en CÓDIGO,
       // sin depender de que el LLM emita ESCALAR_A_WIG (lead de alto valor).
       if (totalBultos >= 480) {
         await notifyWig(phone, session, `Mayoreo real: ${totalBultos} bultos (~${Math.round(totalBultos / 40)} ton) — "${message.substring(0, 60)}"`);
         await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
-        sheetsService.updateSegmento(phone, 'Mayoreo / Reventa').catch(() => {});
+        sheetsService.updateSegmento(phone, 'Mayoreo / Reventa').catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
         const nombreMay = primerNombre(session.customer?.name || '');
         return nombreMay
           ? `¡${nombreMay}, para ese volumen te paso directo con un asesor! 🙌 En breve te contacta por aquí.`
@@ -1580,7 +1589,7 @@ async function handleActive(phone, message, session) {
     // Si tiene CP o ciudad en tempData → escalar a Wig para coordinar
     if (session.customer?.cp || session.tempData?.cp) {
       await notifyWig(phone, session, `Cliente quiere pasar a recoger su pedido`);
-      sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
+      await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
       return '¡Claro que puedes pasar a recoger! 😊 Un asesor te da los detalles de la ubicación más cercana para coordinar.';
     }
     // Si no tiene ubicación → preguntar ciudad antes
@@ -1614,7 +1623,7 @@ async function handleActive(phone, message, session) {
         session.conversationHistory.push({ role: 'assistant', content: respuestaSucursal });
         session.conversationHistory = trimHistory(session.conversationHistory);
         await sessionManager.updateSession(phone, { conversationHistory: session.conversationHistory });
-        sheetsService.appendConversationLog(phone, message, respuestaSucursal).catch(() => {});
+        sheetsService.appendConversationLog(phone, message, respuestaSucursal).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
         return respuestaSucursal;
       } catch (err) {
         console.error('Error buscando cobertura:', err.message);
@@ -1696,7 +1705,7 @@ async function handleActive(phone, message, session) {
       sheetsService.appendTag(session.customer.rowIndex, 'Queja').catch(err => console.warn('⚠️  Failed to append Queja tag:', err.message));
       sheetsService.updateOrderData(session.customer.rowIndex, {
         notas: `Queja pedido: ${message.substring(0, 100)}`,
-      }).catch(() => {});
+      }).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
     }
 
     session.conversationHistory.push({ role: 'assistant', content: respuestaLimpia });
@@ -1704,7 +1713,7 @@ async function handleActive(phone, message, session) {
       flowState: 'waiting_for_wig',
       conversationHistory: session.conversationHistory,
     });
-    sheetsService.appendConversationLog(phone, message, respuestaLimpia).catch(() => {});
+    sheetsService.appendConversationLog(phone, message, respuestaLimpia).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
     return respuestaLimpia;
   }
 
@@ -1722,7 +1731,7 @@ async function handleActive(phone, message, session) {
     // ESCALAR DIRECTAMENTE a Wig (sin pedir CP primero)
     const motivo = session.tempData?.nombre || message.substring(0, 50) || 'consulta';
     await notifyWig(phone, session, motivo);
-    sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
+    await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
     return 'Ahorita te conecto con un asesor 🙌';
   }
 
@@ -1741,14 +1750,14 @@ async function handleActive(phone, message, session) {
 
       sheetsService.updateOrderData(session.customer.rowIndex, {
         notas: `Interesado en: ${producto} — pendiente de decidir`,
-      }).catch(() => {});
+      }).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
 
       sheetsService.addSeguimiento(
         session.customer.phone || phone,
         session.customer.name || '',
         `Interesado en ${producto} — dijo que lo piensa`,
         'Pendiente de compra — hacer seguimiento'
-      ).catch(() => {});
+      ).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
 
       if (!session.customer.segmento || session.customer.segmento === 'Lead frío') {
         sheetsService.updateSegmento(phone, 'Lead frío').catch(err => console.warn('⚠️  Failed to update segmento:', err.message));
@@ -1756,8 +1765,8 @@ async function handleActive(phone, message, session) {
     }
 
     session.conversationHistory.push({ role: 'assistant', content: respuestaLimpia });
-    sessionManager.updateSession(phone, { conversationHistory: session.conversationHistory });
-    sheetsService.appendConversationLog(phone, message, respuestaLimpia).catch(() => {});
+    await sessionManager.updateSession(phone, { conversationHistory: session.conversationHistory });
+    sheetsService.appendConversationLog(phone, message, respuestaLimpia).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
     return respuestaLimpia;
   }
 
@@ -1790,7 +1799,7 @@ async function handleActive(phone, message, session) {
     respuestaFinal = response + cierres[Math.floor(Math.random() * cierres.length)];
   }
 
-  sheetsService.appendConversationLog(phone, message, respuestaFinal).catch(() => {});
+  sheetsService.appendConversationLog(phone, message, respuestaFinal).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
 
   // Si el bot recomendó un producto (tiene link de la tienda), taggear como asesorado
   if (respuestaFinal.includes('llabanaenlinea.com') && session.customer?.rowIndex) {
@@ -1834,7 +1843,7 @@ async function handleAskingCpBeforeEscalation(phone, message, session) {
       `CP ${cp} — zona local (${zonaLabel}) — primer compra cliente existente`);
 
     if (fueraHorario) {
-      sessionManager.updateSession(phone, {
+      await sessionManager.updateSession(phone, {
         flowState: 'active',
         tempData: { ...session.tempData, escalacionPendiente: true },
       });
@@ -1847,7 +1856,7 @@ async function handleAskingCpBeforeEscalation(phone, message, session) {
           : `¡Perfecto! Estás en zona de Estado de México 😊\nUn asesor te confirma si tenemos cobertura de reparto en tu zona específica — te contactará mañana a primera hora 🙌\n¿Puedo ayudarte con algo más mientras tanto?`;
     }
 
-    sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
+    await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
     return nombre
       ? zonaLabel === 'CDMX'
         ? `¡Perfecto, ${nombre}! Estás en CDMX 😊\nUn asesor te contactará en breve para coordinar la entrega directa 🚚`
@@ -1863,19 +1872,19 @@ async function handleAskingCpBeforeEscalation(phone, message, session) {
   if (cantidadSesion >= 480) {
     // 480+ bultos (12+ ton) en provincia → camión completo → escalar
     await notifyWig(phone, session, `CP foráneo ${cp} — mayoreo real: ${cantidadSesion} bultos`);
-    sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
+    await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
     return nombre
       ? `¡Listo, ${nombre}! 😊 Un asesor te contactará para cotizar el flete del camión completo.`
       : '¡Listo! 😊 Un asesor te contactará para cotizar el flete del camión completo.';
   }
 
   if (cantidadSesion > 10 && cantidadSesion < 480) {
-    sessionManager.updateSession(phone, { flowState: 'active' });
+    await sessionManager.updateSession(phone, { flowState: 'active' });
     return `Para esa cantidad fuera de la zona centro no contamos con servicio de entrega disponible por el momento 😔\n\nSi en algún momento reduces a pedidos de hasta 10 bultos o tu volumen llega a camión completo (12 toneladas), aquí estamos con gusto 🌾\n\nMientras tanto, si necesitas algún producto en menor cantidad puedo ayudarte a encontrarlo en la tienda.`;
   }
 
   // 1-10 bultos en provincia → paquetería normal
-  sessionManager.updateSession(phone, { flowState: 'active' });
+  await sessionManager.updateSession(phone, { flowState: 'active' });
   return nombre
     ? `${pick(CHANNEL_VARIANTS)(nombre)} ${pick(CLOSING_VARIANTS)}`
     : `Te mandamos por paquetería a todo México 📦 Haz tu pedido en llabanaenlinea.com`;
@@ -2294,7 +2303,7 @@ async function handleConfirmingName(phone, message, session) {
     const first  = primerNombre(nombre);
 
     if (session.customer?.rowIndex) {
-      sheetsService.updateOrderData(session.customer.rowIndex, { name: nombre }).catch(() => {});
+      sheetsService.updateOrderData(session.customer.rowIndex, { name: nombre }).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
     }
     await sessionManager.updateSession(phone, {
       flowState: 'active',
@@ -2360,7 +2369,7 @@ async function handleConfirmingName(phone, message, session) {
 
     const first = primerNombre(nombreFinal);
     if (session.customer?.rowIndex) {
-      sheetsService.updateOrderData(session.customer.rowIndex, { name: nombreFinal }).catch(() => {});
+      sheetsService.updateOrderData(session.customer.rowIndex, { name: nombreFinal }).catch(err => console.error('[botLogic] Sheets/Redis error:', err.message));
     }
     await sessionManager.updateSession(phone, {
       flowState: 'active',

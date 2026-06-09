@@ -175,11 +175,12 @@ async function webhookHandler(req, res) {
     const entry = pendingMessages.get(from);
     if (!entry) return;
     const mensajeCompleto = entry.messages.join(' ');
-    pendingMessages.delete(from);
+    pendingMessages.delete(from);  // Limpiar siempre, incluso si hay error
     try {
       await procesarMensaje(from, mensajeCompleto);
     } catch (err) {
-      console.error('procesarMensaje error:', err.message);
+      console.error('[webhookHandler] Error en procesarMensaje:', err.message);
+      // El lock será limpiado por el finally en procesarMensaje
     }
   }, 1500);
 
