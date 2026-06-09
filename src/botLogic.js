@@ -21,8 +21,6 @@ const { FLOW_STATES, TIME_CONSTANTS } = require('./constants');
 const { CPValidator, PhoneValidator } = require('./validators');
 const PatternRegistry   = require('./patternRegistry');
 const { messageUtils, getFirstName } = require('./messageUtils');
-const EscalationManager = require('./escalationManager');
-const SessionUpdaters   = require('./sessionUpdaters');
 const logger = require('./logger');
 
 // ── Constantes ────────────────────────────────────────────────────────────────

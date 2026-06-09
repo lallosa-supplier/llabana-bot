@@ -1,0 +1,1313 @@
+═══════════════════════════════════════════════════════════════════════════════
+                         LOG DE CONVERSACIONES
+═══════════════════════════════════════════════════════════════════════════════
+
+📊 INFORMACIÓN GENERAL
+─────────────────────────────────────────────────────────────────────────────
+Archivo: logs.1781014472267.log
+Generado: 2026-06-09T14:14:48.068Z
+Total de conversaciones: 27
+
+PERÍODO A ANALIZAR:
+├─ Desde: N/A
+└─ Hasta: N/A
+
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5212465277167
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 3
+│
+│ 🤖 [null] BOT
+│    Para esa cantidad te recomiendo:
+│ 👤 [null] USUARIO
+│    Ok
+│ 🤖 [null] BOT
+│    Aquí van los links para que hagas tu pedido 🛒
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5217121495943
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 6
+│
+│ 👤 [null] USUARIO
+│    Hola, me mandaron aqui desde la tienda
+│ 👤 [null] USUARIO
+│    Para comprar gato
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Llabana, alimento balanceado para tus animales 🌾 ¿Estás en México?
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Gati
+│ 🤖 [null] BOT
+│    Gracias Gati 😊 ¿Me das también tu apellido para tener tus datos completos?
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5219991339647
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 16
+│
+│ 👤 [null] USUARIO
+│    Hola, quiero mas informes
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Llabana, alimento balanceado para tus animales 🌾 ¿Estás en México?
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Jesus
+│ 🤖 [null] BOT
+│    Gracias Jesus 😊 ¿Me das también tu apellido para tener tus datos completos?
+│ 👤 [null] USUARIO
+│    Santana pacheco
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Jesus Santana Pacheco*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    Gracias Jesus 🌾 ¿Qué necesitas hoy?
+│ 👤 [null] USUARIO
+│    Sobre el minerar tech para Ovino
+│ 🤖 [null] BOT
+│    ¿Qué necesitas saber sobre el *Mineral Tech Borrego*? 🌾
+│ 👤 [null] USUARIO
+│    Pie de cria
+│ 🤖 [null] BOT
+│    El *Mineral Tech Borrego Pie de Cría* a $581 / 20 kg es ideal para lo que necesitas — reproductoras, sementales y corder…
+│ 👤 [null] USUARIO
+│    16
+│ 🤖 [null] BOT
+│    Para 16 borregos necesitas aproximadamente *2 bultos al mes* 🐑
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5218331051580
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 16
+│
+│ 👤 [null] USUARIO
+│    Hola, vi un producto en su tienda en linea
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Soy el asistente de Llabana, tu aliado en alimento balanceado 🌾 ¿Estás en México?
+│ 👤 [null] USUARIO
+│    Donde se ubican?
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Si mexico
+│ 🤖 [null] BOT
+│    ¿Me dices tu nombre? 😊
+│ 👤 [null] USUARIO
+│    Christopher
+│ 🤖 [null] BOT
+│    Gracias Christopher 😊 ¿Me das también tu apellido para tener tus datos completos?
+│ 👤 [null] USUARIO
+│    Castillo
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Christopher Castillo*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¡Mucho gusto, Christopher! 😊
+│ 👤 [null] USUARIO
+│    89460
+│ 🤖 [null] BOT
+│    Te llegamos por paquetería 📦
+│ 👤 [null] USUARIO
+│    Alimento para gallina ponedora
+│ 🤖 [null] BOT
+│    Para gallinas de postura tenemos varias opciones 🐔
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5212213856773
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 11
+│
+│ 👤 [null] USUARIO
+│    Hola buenos días
+│ 🤖 [null] BOT
+│    ¡Bienvenido! 🌾 Soy el asistente de Llabana. ¿Nos escribes desde México?
+│ 👤 [null] USUARIO
+│    Que precio tiene el bulto de purina desarrollo cerdo
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Omar Bruno
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Omar Bruno*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¡Mucho gusto, Omar! 😊
+│ 👤 [null] USUARIO
+│    5 cerdas
+│ 🤖 [null] BOT
+│    Para 5 cerdas en desarrollo te recomiendo el *Desarrollo Hi-O Turbo* 🐷
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5217752293265
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 66
+│
+│ 👤 [null] USUARIO
+│    Hola buen día 
+│ 🤖 [null] BOT
+│    ¡Bienvenido! 🌾 Soy el asistente de Llabana. ¿Nos escribes desde México?
+│ 👤 [null] USUARIO
+│    Estado de México
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊 Un asesor te contactará en breve.
+│ 👤 [null] USUARIO
+│    Estefany
+│ 🤖 [null] BOT
+│    Gracias Estefany 😊 ¿Me das también tu apellido para tener tus datos completos?
+│ 👤 [null] USUARIO
+│    Guevara
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Estefany Guevara*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¡Mucho gusto, Estefany! 😊 Un asesor te contactará en breve por este WhatsApp 🙌
+│ 👤 [null] USUARIO
+│    Muchas gracias
+│ 🤖 [null] BOT
+│    Ya avisé al asesor, te contactará en breve 🙌
+│ 👤 [null] USUARIO
+│    Me recomendaron pet  Master
+│ 🤖 [null] BOT
+│    ¡Pet Master es una excelente opción! 🐾
+│ 👤 [null] USUARIO
+│    Q precio tiene
+│ 👤 [null] USUARIO
+│    ?
+│ 🤖 [null] BOT
+│    El bulto de 25 kg está en **$559** 🛒
+│ 👤 [null] USUARIO
+│    Tienen envío a domicilio
+│ 🤖 [null] BOT
+│    Sí, enviamos a domicilio 📦
+│ 👤 [null] USUARIO
+│    55020
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│ 👤 [null] USUARIO
+│    Cuánto es por el envío a domicilio
+│ 👤 [null] USUARIO
+│    ?
+│ 🤖 [null] BOT
+│    El costo de envío se calcula según tu CP al momento de pagar — puedes verlo antes de confirmar, sin sorpresas 🛒
+│ 👤 [null] USUARIO
+│    55020
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│ 👤 [null] USUARIO
+│    😶
+│ 🤖 [null] BOT
+│    Jaja no te preocupes 😄
+│ 👤 [null] USUARIO
+│    55020
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│ 👤 [null] USUARIO
+│    Qué alimentos tienen para gato?
+│ 🤖 [null] BOT
+│    Tenemos varias opciones 🐱 ¿Tu gato es adulto o cachorro?
+│ 👤 [null] USUARIO
+│    Adulto
+│ 🤖 [null] BOT
+│    Para gatos adultos tenemos estas opciones:
+│ 👤 [null] USUARIO
+│    Seis gatos
+│ 🤖 [null] BOT
+│    Para 6 gatos adultos te recomiendo **Kattos** — $529 por 15 kg, buena relación precio-rendimiento 🐱
+│ 👤 [null] USUARIO
+│    Quiero saber cuánto sale con envío a domicilio
+│ 🤖 [null] BOT
+│    El envío se calcula con tu CP 📍
+│ 👤 [null] USUARIO
+│    55020
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│ 👤 [null] USUARIO
+│    Que croquetas para perro tienen??
+│ 🤖 [null] BOT
+│    Tenemos bastantes opciones 🐶 ¿Tu perro es adulto o cachorro?
+│ 👤 [null] USUARIO
+│    Adulto
+│ 🤖 [null] BOT
+│    Para perros adultos tenemos estas opciones 🐶
+│ 👤 [null] USUARIO
+│    Tienen dog chow adulto
+│ 🤖 [null] BOT
+│    Para perros adultos tenemos **Dog Chow Razas Pequeñas** a $1,125 / 25 kg 🐶
+│ 👤 [null] USUARIO
+│    Tienes nupec adulto
+│ 🤖 [null] BOT
+│    No tenemos Nupec en nuestro catálogo 😔
+│ 👤 [null] USUARIO
+│    Es grande
+│ 🤖 [null] BOT
+│    Para perro grande adulto te recomiendo **Hi Dog Adulto Croqueta Grande** — $750 / 25 kg 🐶
+│ 👤 [null] USUARIO
+│    Hi  multi pro premium adulto
+│ 👤 [null] USUARIO
+│    Tiene
+│ 🤖 [null] BOT
+│    Sí tenemos **Hi Multipro Adulto** — $1,015 / 25 kg 🐶
+│ 👤 [null] USUARIO
+│    Fidus pro adulto
+│ 🤖 [null] BOT
+│    Sí tenemos **Fidus Pro Adulto** — $686 / 25 kg 🐶
+│ 👤 [null] USUARIO
+│    Con envío
+│ 👤 [null] USUARIO
+│    ?
+│ 🤖 [null] BOT
+│    Dime tu código postal 📍 y te digo exactamente cuánto sale el envío a tu domicilio 😊
+│ 👤 [null] USUARIO
+│    Fidus pro adulto
+│ 🤖 [null] BOT
+│    Para saber el total con envío necesito tu CP 📍
+│ 👤 [null] USUARIO
+│    55020
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│ 👤 [null] USUARIO
+│    Creo croquetas de gato económicas y de buena calidad
+│ 🤖 [null] BOT
+│    Para tus 6 gatos adultos, te recomiendo **Kattos** — $529 / 15 kg 🐱
+│ 👤 [null] USUARIO
+│    Q más opciones tienes
+│ 🤖 [null] BOT
+│    Para gatos adultos tenemos estas opciones 🐱
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215591658021
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 18
+│
+│ 👤 [null] USUARIO
+│    Hola, vi un producto en su tienda en linea
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Llabana, alimento balanceado para tus animales 🌾 ¿Estás en México?
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Busco comida para ave de postura
+│ 🤖 [null] BOT
+│    ¿Me dices tu nombre? Por ejemplo: Juan o María 😊
+│ 👤 [null] USUARIO
+│    Alejandro Flores
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Alejandro Flores*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¡Mucho gusto, Alejandro! 😊 ¿En qué te puedo ayudar?
+│ 👤 [null] USUARIO
+│    Busco alimento para gallina ponedora
+│ 🤖 [null] BOT
+│    Para gallinas de postura tenemos varias opciones 🐓
+│ 👤 [null] USUARIO
+│    Tengo 10 mil gallinas
+│ 🤖 [null] BOT
+│    ¡Vaya granja! 🐓 Para 10,000 gallinas necesitas aproximadamente *80 bultos por semana* de Layina.
+│ 👤 [null] USUARIO
+│    42854
+│ 🤖 [null] BOT
+│    Antes de conectarte con un asesor, déjame confirmar tu solicitud:
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    Nuestro horario de atención con asesor es L-V 8am-5pm y sáb 9am-2pm 🕘
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5216751020984
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 22
+│
+│ 👤 [null] USUARIO
+│    Hola, vi un producto que me interesa
+│ 🤖 [null] BOT
+│    ¡Bienvenido! 🌾 Soy el asistente de Llabana. ¿Nos escribes desde México?
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Ángel arratia
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Ángel Arratia*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    Gracias Ángel 🌾 ¿Qué necesitas hoy?
+│ 👤 [null] USUARIO
+│    Porquina
+│ 🤖 [null] BOT
+│    ¿Para qué etapa son tus cerdos, Ángel? ¿Inicio, desarrollo o finalización? 🐷
+│ 👤 [null] USUARIO
+│    Las 3 etapas
+│ 🤖 [null] BOT
+│    Para las 3 etapas te recomiendo esta línea completa Purina:
+│ 👤 [null] USUARIO
+│    20
+│ 🤖 [null] BOT
+│    Para 20 cerdos necesitas aprox:
+│ 👤 [null] USUARIO
+│    Yo busco concentrado para mezclar con maíz
+│ 🤖 [null] BOT
+│    Perfecto, para eso tienes la *Porquina PT* de Purina 🐷
+│ 👤 [null] USUARIO
+│    34168
+│ 🤖 [null] BOT
+│    Te llegamos por paquetería 📦
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    👉 https://llabanaenlinea.com/products/porquina-pt-1?variant=48198745162028
+│ 👤 [null] USUARIO
+│    No me es rentable ,pues es mucho el envio
+│ 🤖 [null] BOT
+│    Entiendo 😔 El flete a veces pesa cuando son pocos bultos.
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5216531192337
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 22
+│
+│ 👤 [null] USUARIO
+│    Hola, vi un producto en su tienda en linea
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Llabana, alimento balanceado para tus animales 🌾 ¿Estás en México?
+│ 👤 [null] USUARIO
+│    Si México
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Salvador guerra
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Salvador Guerra*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¡Mucho gusto, Salvador! 😊
+│ 👤 [null] USUARIO
+│    Me interesa pavitina
+│ 🤖 [null] BOT
+│    ¡Buena elección! La Pavitina 28% es para iniciación de pavos del día 1 al día 41 🦃
+│ 👤 [null] USUARIO
+│    Quiero probarlo para alimentar otra ave
+│ 🤖 [null] BOT
+│    ¡Claro! ¿Para qué ave es? Así te busco el producto ideal 🌾
+│ 👤 [null] USUARIO
+│    Codorniz pero quiero lto en proteína para engorde
+│ 🤖 [null] BOT
+│    Para codorniz en engorda te va mejor el *Codor Startina* — es específico para codornices y arranca desde el día 1 🐦
+│ 👤 [null] USUARIO
+│    Tengo 247
+│ 🤖 [null] BOT
+│    Para 247 codornices necesitas aproximadamente *2 bultos por semana* 📦
+│ 👤 [null] USUARIO
+│    Si pásamelo
+│ 🤖 [null] BOT
+│    Aquí va 👇
+│ 👤 [null] USUARIO
+│    83450 Burocrata
+│ 🤖 [null] BOT
+│    Te llegamos por paquetería 📦
+│ 👤 [null] USUARIO
+│    Cuál es el costo o es gratis el envío
+│ 🤖 [null] BOT
+│    El envío tiene costo 📦 Se calcula automáticamente al ingresar tu CP en la tienda — puedes verlo antes de confirmar, sin…
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5212202750001
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 23
+│
+│ 👤 [null] USUARIO
+│    Hola, quiero mas informacion
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Soy el asistente de Llabana, tu aliado en alimento balanceado 🌾 ¿Estás en México?
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Serch
+│ 🤖 [null] BOT
+│    Gracias Serch 😊 ¿Me das también tu apellido para tener tus datos completos?
+│ 👤 [null] USUARIO
+│    Pérez
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Serch Pérez*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¡Mucho gusto, Serch! 😊 ¿En qué te puedo ayudar?
+│ 👤 [null] USUARIO
+│    En Tlaxcala tiene sucursales de venta de alimentos para conejo
+│ 👤 [null] USUARIO
+│    En marca turbo
+│ 🤖 [null] BOT
+│    En Tlaxcala no tenemos sucursales 😔 pero te enviamos directo a tu domicilio por paquetería 📦
+│ 👤 [null] USUARIO
+│    Engorda
+│ 🤖 [null] BOT
+│    Para engorda te recomiendo el *Ke Bueno Conejos* de Purina 🐇
+│ 👤 [null] USUARIO
+│    30
+│ 🤖 [null] BOT
+│    Para 30 conejos necesitas aprox *1 bulto cada 2 semanas* 🐇
+│ 👤 [null] USUARIO
+│    El pago es contra entrega?
+│ 🤖 [null] BOT
+│    El pago se hace directo en la tienda al momento de hacer tu pedido 🛒
+│ 👤 [null] USUARIO
+│    O donde lo puedo recoger personalmente
+│ 🤖 [null] BOT
+│    ¡Claro que puedes pasar a recoger! 😊 ¿En qué ciudad estás? Te confirmo si hay cobertura cerca.
+│ 👤 [null] USUARIO
+│    En la ciudad de México
+│ 🤖 [null] BOT
+│    Ahorita te conecto con un asesor 🙌
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215648076361
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 1
+│
+│ 👤 [null] USUARIO
+│    /pendientes
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215578702078
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 16
+│
+│ 👤 [null] USUARIO
+│    Hola manejan ustedes megaplumax
+│ 👤 [null] USUARIO
+│    Alimento para gallos
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Llabana, alimento balanceado para tus animales 🌾 ¿Estás en México?
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Jesus Vargas
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Jesus Vargas*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¡Mucho gusto, Jesus! 😊
+│ 👤 [null] USUARIO
+│    Pelecha
+│ 🤖 [null] BOT
+│    Para pelecha te recomiendo el *Desarrollo, Recuperación y Pelecha de Norel* 🐓
+│ 👤 [null] USUARIO
+│    Quien megaplumax
+│ 🤖 [null] BOT
+│    No tengo ese producto en nuestro catálogo 😅
+│ 👤 [null] USUARIO
+│    Megaplumax es de purina linea templanza
+│ 🤖 [null] BOT
+│    Revisé toda la línea Templanza y no tenemos ese producto exacto 😔
+│ 👤 [null] USUARIO
+│    Se llama mega plumax
+│ 🤖 [null] BOT
+│    Ahorita te conecto con un asesor 🙌
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5219622519953
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 20
+│
+│ 👤 [null] USUARIO
+│    Buenas tardes.
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Llabana, alimento balanceado para tus animales 🌾 ¿Estás en México?
+│ 👤 [null] USUARIO
+│    Así es, en Chiapas
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Hola, con Isaac Pineda
+│ 🤖 [null] BOT
+│    ¿Me dices tu nombre? Por ejemplo: Juan o María 😊
+│ 👤 [null] USUARIO
+│    Ahí lo tienes
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Ahí Lo Tienes*? 😊
+│ 👤 [null] USUARIO
+│    Isaac Pineda
+│ 🤖 [null] BOT
+│    Gracias Isaac 🌾 ¿Qué necesitas hoy?
+│ 👤 [null] USUARIO
+│    Ese es mi nombre
+│ 🤖 [null] BOT
+│    ¡Isaac! 😄 Buen nombre.
+│ 👤 [null] USUARIO
+│    Precio por el alimento Ke Bueno Aves Engorda
+│ 🤖 [null] BOT
+│    El *Ke Bueno Aves Engorda* está en *$340* el bulto de 25 kg 🌾
+│ 👤 [null] USUARIO
+│    Estaba quería saber el precio por 10 toneladas de alimento de 25 kg
+│ 🤖 [null] BOT
+│    10 toneladas son 400 bultos de 25 kg — es una cantidad grande 💪
+│ 👤 [null] USUARIO
+│    30900
+│ 🤖 [null] BOT
+│    Te llegamos por paquetería 📦
+│ 👤 [null] USUARIO
+│    Hazme la cotización por 12 toneladas, por favor
+│ 🤖 [null] BOT
+│    ¡Isaac, para ese volumen te paso directo con un asesor! 🙌 En breve te contacta por aquí.
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215577389527
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 42
+│
+│ 👤 [null] USUARIO
+│    Hola buenos dias
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Llabana, alimento balanceado para tus animales 🌾 ¿Estás en México?
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Maria
+│ 🤖 [null] BOT
+│    Gracias Maria 😊 ¿Me das también tu apellido para tener tus datos completos?
+│ 👤 [null] USUARIO
+│    Hernandez
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Maria Hernandez*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¡Mucho gusto, Maria! 😊 ¿En qué te puedo ayudar?
+│ 👤 [null] USUARIO
+│    Quiero alimento para patos y gallo
+│ 🤖 [null] BOT
+│    Para tus *gallos* tenemos varias opciones según la etapa — ¿en qué etapa están? (inicio, crecimiento, entrenamiento, man…
+│ 👤 [null] USUARIO
+│    Crecimiento el gallo y tengo una patita y los dos son mascotas
+│ 🤖 [null] BOT
+│    Para tu gallo en crecimiento te recomiendo el *Templanza Forja Brava* de Purina 💪
+│ 👤 [null] USUARIO
+│    El gallo ya tiene un año comigo
+│ 🤖 [null] BOT
+│    Con un año ya está en etapa de mantenimiento 🐓
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¡Perfecto! Entonces serían:
+│ 👤 [null] USUARIO
+│    El de gallo puede ser el de 5 kg y el de la pata el de  25 kg
+│ 🤖 [null] BOT
+│    ¡Claro! Quedaría así:
+│ 👤 [null] USUARIO
+│    55767
+│ 🤖 [null] BOT
+│    ¡Listo, Maria! 😊 En breve te contacta un asesor por este WhatsApp.
+│ 👤 [null] USUARIO
+│    Si muchas gracias
+│ 🤖 [null] BOT
+│    Ya avisé al asesor, te contactará en breve 🙌
+│ 👤 [null] USUARIO
+│    Recomendaciones de alimento
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│ 👤 [null] USUARIO
+│    Esta bien
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│ 👤 [null] USUARIO
+│    Okey espero
+│ 🤖 [null] BOT
+│    Tu CP es de Estado de México 📍 — te llegará por paquetería a domicilio en 2-4 días hábiles 📦
+│ 👤 [null] USUARIO
+│    Hay tienda en físico sercas donde pueda ir yo por el producto?
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│ 👤 [null] USUARIO
+│    Esta bien
+│ 🤖 [null] BOT
+│    ¡Listo! 🌾 Agrega los dos productos al carrito y listo tu pedido.
+│ 👤 [null] USUARIO
+│    Hay una tienda donde pueda ir a comprarlo?
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│ 👤 [null] USUARIO
+│    Okey
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│ 👤 [null] USUARIO
+│    Okey
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│ 👤 [null] USUARIO
+│    Esta bien
+│ 🤖 [null] BOT
+│    ¡Que disfruten tu gallo y tu patita! 🐓🦆 Cualquier cosa me avisas.
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5214491028681
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 12
+│
+│ 👤 [null] USUARIO
+│    Hola, vi un producto que me interesa
+│ 🤖 [null] BOT
+│    ¡Bienvenido! 🌾 Soy el asistente de Llabana. ¿Nos escribes desde México?
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Agustin Quiñones
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Agustin Quiñones*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¡Qué bueno que nos escribes, Agustin! ¿En qué te ayudo?
+│ 👤 [null] USUARIO
+│    Quisiera cotizar el costal de potrina
+│ 🤖 [null] BOT
+│    ¡La X-Cellence Potrina está en *$473* el bulto de 25 kg! 🐴
+│ 👤 [null] USUARIO
+│    2
+│ 🤖 [null] BOT
+│    Para 2 potros te recomiendo *2 bultos* para arrancar — te duran bien según el consumo diario 🐴
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215532923810
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 28
+│
+│ 👤 [null] USUARIO
+│    Buenos días
+│ 👤 [null] USUARIO
+│    Disculpe la hora
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Soy el asistente de Llabana, tu aliado en alimento balanceado 🌾 ¿Estás en México?
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Soy Montse c:, soy del Edo Mex Tiene alimento para gallina ponedora?
+│ 🤖 [null] BOT
+│    Gracias Montse 😊 ¿Me das también tu apellido para tener tus datos completos?
+│ 👤 [null] USUARIO
+│    Montserrat López Castrejón
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Montserrat López Castrejón*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¡Mucho gusto, Montserrat! 😊
+│ 👤 [null] USUARIO
+│    Tiene alimento para gallina ponedora?
+│ 🤖 [null] BOT
+│    ¡Sí tenemos! 🐔
+│ 👤 [null] USUARIO
+│    3 gallinas
+│ 🤖 [null] BOT
+│    Para 3 gallinas un bulto de 25kg te dura como 3 meses 😊
+│ 👤 [null] USUARIO
+│    Si por favor
+│ 🤖 [null] BOT
+│    Aquí lo tienes 👇
+│ 👤 [null] USUARIO
+│    55060
+│ 🤖 [null] BOT
+│    ¡Listo, Montserrat! 😊 En breve te contacta un asesor por este WhatsApp.
+│ 👤 [null] USUARIO
+│    Gracias
+│ 🤖 [null] BOT
+│    Ya avisé al asesor, te contactará en breve 🙌
+│ 👤 [null] USUARIO
+│    Comida para gallo macho?
+│ 🤖 [null] BOT
+│    Tu CP ya lo tenemos registrado — te llega por paquetería a La Guadalupana 📦
+│ 👤 [null] USUARIO
+│    Gallo mascota
+│ 🤖 [null] BOT
+│    Tienes toda la razón y lamento profundamente la experiencia que has tenido 😔
+│ 👤 [null] USUARIO
+│    Traspatio
+│ 🤖 [null] BOT
+│    Para gallo de traspatio te recomiendo:
+│ 👤 [null] USUARIO
+│    Tienen comederos?
+│ 🤖 [null] BOT
+│    Ese tipo de accesorios no los manejamos 😅
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215513691512
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 2
+│
+│ 👤 [null] USUARIO
+│    Hola, vi un producto en su tienda en linea
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Llabana, alimento balanceado para tus animales 🌾 ¿Estás en México?
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215582997032
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 10
+│
+│ 👤 [null] USUARIO
+│    Hola, quiero mas informes
+│ 🤖 [null] BOT
+│    ¡Bienvenido! 🌾 Soy el asistente de Llabana. ¿Nos escribes desde México?
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Con Karina
+│ 🤖 [null] BOT
+│    Gracias Karina 😊 ¿Me das también tu apellido para tener tus datos completos?
+│ 👤 [null] USUARIO
+│    Pichardo
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Karina Pichardo*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¡Mucho gusto, Karina! 😊 ¿En qué te puedo ayudar?
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215513866375
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 24
+│
+│ 👤 [null] USUARIO
+│    hola buenas tardes,quiero saber si tienen arena alfacat y cual es el precio
+│ 🤖 [null] BOT
+│    ¡Bienvenido! 🌾 Soy el asistente de Llabana. ¿Nos escribes desde México?
+│ 👤 [null] USUARIO
+│    si
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    mi nombre es guillermo
+│ 🤖 [null] BOT
+│    Gracias Guillermo 😊 ¿Me das también tu apellido para tener tus datos completos?
+│ 👤 [null] USUARIO
+│    resendiz
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Guillermo Resendiz*? 😊
+│ 👤 [null] USUARIO
+│    asi es
+│ 🤖 [null] BOT
+│    ¡Qué bueno que nos escribes, Asi! ¿En qué te ayudo?
+│ 👤 [null] USUARIO
+│    quiero saber si tienen arena para gato alfacat y que precio tiene
+│ 🤖 [null] BOT
+│    Sí tenemos Alfa Cat 🐱
+│ 👤 [null] USUARIO
+│    si
+│ 🤖 [null] BOT
+│    Aquí lo tienes 🛒
+│ 👤 [null] USUARIO
+│    4
+│ 🤖 [null] BOT
+│    Para 4 atados serían $232 pesos de producto 🛒
+│ 👤 [null] USUARIO
+│    57830
+│ 🤖 [null] BOT
+│    ¡Listo, Asi! 😊 En breve te contacta un asesor por este WhatsApp.
+│ 👤 [null] USUARIO
+│    ok gracias
+│ 🤖 [null] BOT
+│    Ya avisé al asesor, te contactará en breve 🙌
+│ 👤 [null] USUARIO
+│    la entrega tiene algun costo en nezahualcoyotl estado de mexico?
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│ 👤 [null] USUARIO
+│    de acuerdo
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5217714140192
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 14
+│
+│ 👤 [null] USUARIO
+│    Buenas tardes
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Soy el asistente de Llabana, tu aliado en alimento balanceado 🌾 ¿Estás en México?
+│ 👤 [null] USUARIO
+│    Disculpe la molestia
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Quería saber si tienen omolene 200
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊 En cuanto me digas tu nombre te ayudo con eso.
+│ 👤 [null] USUARIO
+│    Antonio morales pero la empresa es importadora ARESJI
+│ 🤖 [null] BOT
+│    ¿Me dices tu nombre? Por ejemplo: Juan o María 😊
+│ 👤 [null] USUARIO
+│    Ya le dije q soy Antonio morales…..
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Antonio Morales*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¡Mucho gusto, Antonio! 😊
+│ 👤 [null] USUARIO
+│    Para preguntar si tiene omolene 200
+│ 🤖 [null] BOT
+│    Sí tenemos el Omolene 200 Performance 🌾
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5217225736727
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 20
+│
+│ 👤 [null] USUARIO
+│    Saludos
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Llabana, alimento balanceado para tus animales 🌾 ¿Estás en México?
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Angel Almeida Rojas
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Angel Almeida Rojas*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    Gracias Angel 🌾 ¿Qué necesitas hoy?
+│ 👤 [null] USUARIO
+│    Información de productos o distribuidores en Toluca estado de México
+│ 🤖 [null] BOT
+│    ¡Qué interesante! Para orientarte mejor, ¿en qué ciudad o municipio estás? 📍
+│ 👤 [null] USUARIO
+│    Lerma
+│ 🤖 [null] BOT
+│    ¡Perfecto! ¿Qué tipo de negocio tienes o planeas abrir? Por ejemplo: tienda de mascotas, forrajería, agropecuaria, veter…
+│ 👤 [null] USUARIO
+│    Forrajeria
+│ 🤖 [null] BOT
+│    ¡Genial! ¿Tienes idea del volumen aproximado que manejarías al mes? Por ejemplo: 10 bultos, 50 bultos, más de 100... 📦
+│ 👤 [null] USUARIO
+│    Más de 100
+│ 🤖 [null] BOT
+│    ¡Perfecto, Angel! Con esa información un asesor especializado te contactará en breve para platicar sobre las opciones de…
+│ 👤 [null] USUARIO
+│    Gracias
+│ 🤖 [null] BOT
+│    Ya avisé al asesor, te contactará en breve 🙌
+│ 👤 [null] USUARIO
+│    En las tres cosas
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5217441441682
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 16
+│
+│ 👤 [null] USUARIO
+│    Hola, vi un producto que me interesa
+│ 👤 [null] USUARIO
+│    Buenas tardes
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Soy el asistente de Llabana, tu aliado en alimento balanceado 🌾 ¿Estás en México?
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Con Lenin Sotelo
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Lenin Sotelo*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¡Mucho gusto, Lenin! 😊
+│ 🤖 [null] BOT
+│    No encontré "Mega Plumax" en nuestro catálogo 😅
+│ 👤 [null] USUARIO
+│    Disculpe, manejan el mega plumax de Purina?
+│ 👤 [null] USUARIO
+│    Es para gallo de pelea.
+│ 🤖 [null] BOT
+│    Para gallos de pelea tenemos toda la línea Purina 🐓
+│ 👤 [null] USUARIO
+│    Gracias
+│ 🤖 [null] BOT
+│    ¡Dime la etapa y te recomiendo el producto exacto! 🌾
+│ 👤 [null] USUARIO
+│    Es una mamada estar con asistente virtual
+│ 🤖 [null] BOT
+│    Entiendo la frustración 😅 
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215585694117
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 35
+│
+│ 👤 [null] USUARIO
+│    Hola, quiero mas informes
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Llabana, alimento balanceado para tus animales 🌾 ¿Estás en México?
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Maria
+│ 🤖 [null] BOT
+│    Gracias Maria 😊 ¿Me das también tu apellido para tener tus datos completos?
+│ 👤 [null] USUARIO
+│    Avevedo Rodriguez
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Maria Avevedo Rodriguez*? 😊
+│ 👤 [null] USUARIO
+│    Acevedo
+│ 🤖 [null] BOT
+│    ¡Qué bueno que nos escribes, Maria! ¿En qué te ayudo?
+│ 👤 [null] USUARIO
+│    Me gustaría saber el precio de sus productos
+│ 🤖 [null] BOT
+│    Tenemos más de 155 productos — para darte el precio exacto necesito saber un poco más.
+│ 👤 [null] USUARIO
+│    Ya que me gustaría emprender un negocio para ganado
+│ 🤖 [null] BOT
+│    ¡Qué bien, Maria! 🌾 Para ganado tenemos varias líneas según lo que necesites.
+│ 👤 [null] USUARIO
+│    De engorda
+│ 🤖 [null] BOT
+│    Para ganado de engorda tenemos estas opciones principales:
+│ 👤 [null] USUARIO
+│    Y el maíz quebrado
+│ 🤖 [null] BOT
+│    El *Maíz Quebrado Semillina* está en *$203/bulto 25kg* 🌽
+│ 👤 [null] USUARIO
+│    Puercos  
+│ 🤖 [null] BOT
+│    Para cerdos y pollos también tenemos todo 🐷🐔
+│ 👤 [null] USUARIO
+│    Me gustaría saber el precio para todas las etapas y serian de ambos postura y engorda
+│ 🤖 [null] BOT
+│    ¡Con gusto! Aquí te va un resumen de precios 🌾
+│ 👤 [null] USUARIO
+│    Sería para revender
+│ 🤖 [null] BOT
+│    Ahorita te conecto con un asesor 🙌
+│ 🤖 [null] BOT
+│    Ya avisé al asesor, te contactará en breve 🙌
+│ 👤 [null] USUARIO
+│    Ok
+│ 👤 [null] USUARIO
+│    Me pude dar más información sobre todo
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│ 👤 [null] USUARIO
+│    Ok
+│ 👤 [null] USUARIO
+│    Me recomiendan alimentos
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│ 👤 [null] USUARIO
+│    Ok
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│ 👤 [null] USUARIO
+│    En que precio tiene el maíz entero
+│ 🤖 [null] BOT
+│    ¡Con gusto! 🙌 El asesor te contactará en breve por aquí mismo.
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215545820582
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 16
+│
+│ 👤 [null] USUARIO
+│    Hola, me mandaron aqui desde la tienda
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Soy el asistente de Llabana, tu aliado en alimento balanceado 🌾 ¿Estás en México?
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Azucena
+│ 🤖 [null] BOT
+│    Gracias Azucena 😊 ¿Me das también tu apellido para tener tus datos completos?
+│ 👤 [null] USUARIO
+│    Moreno
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Azucena Moreno*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¡Mucho gusto, Azucena! 😊 ¿En qué te puedo ayudar?
+│ 🤖 [null] BOT
+│    Para postura tenemos varias opciones Purina 🌾 ¿Tus gallinas están en qué etapa exacta?
+│ 👤 [null] USUARIO
+│    Quiero cotizar tonelada de bulto de 25 kg
+│ 👤 [null] USUARIO
+│    Layina
+│ 🤖 [null] BOT
+│    La *Layina Purina* está en *$377 por bulto de 25 kg* 🌾
+│ 👤 [null] USUARIO
+│    10400
+│ 🤖 [null] BOT
+│    ¡Listo, Azucena! 😊 En breve te contacta un asesor por este WhatsApp.
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215651736367
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 12
+│
+│ 👤 [null] USUARIO
+│    Hola, quiero mas informacion
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Soy el asistente de Llabana, tu aliado en alimento balanceado 🌾 ¿Estás en México?
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Juan Carlos
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Juan Carlos*? 😊
+│ 👤 [null] USUARIO
+│    Es correcto
+│ 🤖 [null] BOT
+│    ¡Mucho gusto, Juan! 😊 ¿En qué te puedo ayudar?
+│ 👤 [null] USUARIO
+│    Me pueden informar si tienen sucursal aquí en la ciudad de México
+│ 🤖 [null] BOT
+│    ¡Claro que te podemos ayudar! 😊 ¿Me das tu código postal? 📍 Con eso te digo las opciones de entrega que tenemos para t…
+│ 👤 [null] USUARIO
+│    56530
+│ 🤖 [null] BOT
+│    ¡Perfecto, Juan! Estás en zona de Estado de México 😊
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5215527676404
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 13
+│
+│ 👤 [null] USUARIO
+│    Buenas tardes disculpe para pedir informes sobre bulto de 
+│ 🤖 [null] BOT
+│    ¡Bienvenido! 🌾 Soy el asistente de Llabana. ¿Nos escribes desde México?
+│ 👤 [null] USUARIO
+│    Si de Tecamac estado de mexico
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊 Un asesor te contactará en breve.
+│ 👤 [null] USUARIO
+│    Ruben ramirez
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Ruben Ramirez*? 😊
+│ 👤 [null] USUARIO
+│    Correcto
+│ 🤖 [null] BOT
+│    ¡Mucho gusto, Ruben! 😊 Un asesor te contactará en breve por este WhatsApp 🙌
+│ 👤 [null] USUARIO
+│    Gracias
+│ 🤖 [null] BOT
+│    Ya avisé al asesor, te contactará en breve 🙌
+│ 👤 [null] USUARIO
+│    Busco unos bultos de Purina y para saber si ustedes realizan envio
+│ 👤 [null] USUARIO
+│    Buenas tardes disculpe para pedir informes sobre bulto de 
+│ 🤖 [null] BOT
+│    Buenas tardes Ruben 🌾
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CONVERSACIÓN #0 ────────────────────────────────────────┐
+│
+│ Teléfono: +5217731334853
+│ Inicio:   null
+│ Fin:      null
+│ Mensajes: 27
+│
+│ 👤 [null] USUARIO
+│    Hola, vi un producto en su tienda en linea
+│ 🤖 [null] BOT
+│    ¡Hola! 👋 Llabana, alimento balanceado para tus animales 🌾 ¿Estás en México?
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    ¿Con quién tengo el gusto? 😊
+│ 👤 [null] USUARIO
+│    Con Heidi Michel
+│ 🤖 [null] BOT
+│    Solo para confirmar — ¿tu nombre es *Heidi Michel*? 😊
+│ 👤 [null] USUARIO
+│    Si
+│ 🤖 [null] BOT
+│    Gracias Heidi 🌾 ¿Qué necesitas hoy?
+│ 👤 [null] USUARIO
+│    Quería preguntar sobre el mineral tech premium 12
+│ 🤖 [null] BOT
+│    El *Mineral Tech Premium 12* de Purina está en *$912* (bolsa 20 kg) — es para vacas en producción, vacas secas y vaquill…
+│ 👤 [null] USUARIO
+│    Es para un concurso
+│ 👤 [null] USUARIO
+│    Solo para dos vacas
+│ 🤖 [null] BOT
+│    Qué interesante 🏆 ¿Es para preparar a las vaquillas/vacas para exposición o concurso de producción?
+│ 👤 [null] USUARIO
+│    Concurso de producción
+│ 🤖 [null] BOT
+│    Perfecto, entonces el *Mineral Tech Premium 12* es una buena opción — apoya producción de leche, condición corporal y sa…
+│ 👤 [null] USUARIO
+│    Tengo dos
+│ 🤖 [null] BOT
+│    Para 2 vacas en producción, con 1 bulto te dura bastante tiempo 🐄
+│ 👤 [null] USUARIO
+│    En cuanto cuesta el envío para Veracruz
+│ 🤖 [null] BOT
+│    El costo exacto de envío se calcula al momento de pagar en la tienda según tu CP 📦
+│ 👤 [null] USUARIO
+│    92200
+│ 🤖 [null] BOT
+│    Te llegamos por paquetería 📦
+│ 👤 [null] USUARIO
+│    Para chontla Veracruz
+│ 🤖 [null] BOT
+│    El tiempo de entrega es el mismo — *3-5 días hábiles* para esa zona de Veracruz 📦
+│ 👤 [null] USUARIO
+│    Y cual seria el precio
+│ 🤖 [null] BOT
+│    El Mineral Tech Premium 12 está en *$912* por bolsa de 20 kg 🐄
+│ 👤 [null] USUARIO
+│    Osea y por todo, envío
+│ 🤖 [null] BOT
+│    El precio del producto es *$912* 🛒
+│
+└────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+FIN DEL LOG
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ COPIAR TODO ESTO A CLAUDE.AI PARA ANALIZAR

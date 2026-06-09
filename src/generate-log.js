@@ -24,6 +24,7 @@ const lines = content.split('\n');
 
 // Extrae timestamp
 function getTimestamp(line) {
+  if (!line) return null;
   const match = line.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/);
   return match ? match[1] : null;
 }

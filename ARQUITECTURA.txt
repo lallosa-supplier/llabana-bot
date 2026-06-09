@@ -1,0 +1,1009 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                     ARQUITECTURA DEL PROYECTO LLOSA-BOT                       ║
+║                    Mapeo Completo Basado en Código Real                       ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════════════
+1. RESUMEN DEL PROYECTO
+═══════════════════════════════════════════════════════════════════════════════
+
+Chatbot de WhatsApp para Comercializadora Llabana (empresa mexicana de alimento
+balanceado). Los clientes escriben por WhatsApp (Twilio), el bot usa Claude AI
+con tool calling para entender qué necesitan, consulta Google Sheets para datos
+de clientes y productos, maneja escalaciones a asesores humanos (Wig), e integra
+órdenes de Shopify. Corre en Node.js/Express, desplegado en Railway.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+2. MAPA DE ARCHIVOS Y CARPETAS
+═══════════════════════════════════════════════════════════════════════════════
+
+PUNTO DE ENTRADA:
+────────────────
+
+index.js (161 líneas)
+  → Inicia Express, valida env vars, configura webhooks y rutas
+  → EXPORTA: No (es ejecutable)
+  → REQUIERE: express, bodyParser, rateLimit, logger, webhookHandler,
+             shopifyWebhookHandler, transcriptService, knowledgeService,
+             followUpService, colaEscalaciones, sessionManager
+  → RUTAS:
+     POST /webhook/whatsapp → webhookHandler (Twilio)
+     POST /webhook/shopify → shopifyWebhookHandler (Shopify events)
+     GET /health → status del bot
+     GET /api/transcripts → transcripciones
+     GET /dashboard → static HTML
+  → CRON: cada 15 min ejecuta runFollowUps() (follow-up automáticos)
+
+
+CEREBRO IA:
+───────────
+
+aiBot.js (150 líneas)
+  → Cerebro IA principal con Claude + tool calling
+  → EXPORTA: { handleMessageIA(phone, messageBody) }
+  → REQUIERE: @anthropic-ai/sdk, sessionManager, sheetsService, knowledgeService
+  → MASTER_PROMPT:
+     - Entiende REALMENTE qué quiere el cliente (no regex)
+     - Captura NOMBRE + APELLIDO + CP naturalmente
+     - Llama consultar_zona(cp) antes de decidir cómo atender
+     - Si entrega_directa → escala a Wig
+     - Si paquetería + cliente final → recomienda 1 producto, da precio, manda link
+     - Si mayoreo → dice que no tiene cobertura (honesto, sin link)
+     - Si queja/enojo → escala a Wig
+  → HERRAMIENTAS (3):
+     1. consultar_zona(cp)
+        - Determina si CP está en zona entrega directa o paquetería
+        - Devuelve { zona: 'entrega_directa'|'paqueteria', estado, ciudad }
+        - Llama sheetsService.lookupCpMX(cp)
+        - CPsEntregaDirecta: ['550','551','552','555','540','541','06']
+
+     2. registrar_o_actualizar_cliente(input)
+        - Guarda o actualiza cliente en Google Sheets
+        - Llama sheetsService.findCustomer(), sheetsService.updateOrderData()
+        - Campos: nombre, apellido, cp, segmento, notas
+
+     3. escalar_a_wig(input)
+        - Notifica a asesor Wig y cambia flowState a 'waiting_for_wig'
+        - Llama botLogic.notifyWig(phone, session, motivo, resumen)
+        - updateSession(phone, { flowState: 'waiting_for_wig' })
+
+  → LOOP: hasta 5 iteraciones de tool calling
+     • Envía a Claude con herramientas
+     • Claude decide si usar herramienta o responder
+     • Ejecuta herramientas, obtiene resultados
+     • Repite si Claude quiere usar más herramientas
+     • Responde cuando stop_reason != 'tool_use'
+
+
+WEBHOOK Y MANEJO DE MENSAJES:
+──────────────────────────────
+
+webhookHandler.js (191 líneas)
+  → Recibe webhook POST de Twilio cuando cliente envía WhatsApp
+  → EXPORTA: No (se require desde index.js)
+  → REQUIERE: botLogic, twilioService, transcriptService, sessionManager, wigAdminHandler
+  → FUNCIONA:
+     • Deduplica por MessageSid (últimos 100 únicos)
+     • Debounce 1.5s (acumula mensajes rápidos)
+     • Detecta MediaContentType (imágenes, audio)
+     • Maneja comandos /wig (+ otros comandos futuros)
+     • Responde a Twilio con 200 inmediato (no bloquea)
+     • Procesa asincronamente en setTimeout
+  → VARIABLES DE ENTORNO: WIG_WHATSAPP_NUMBER
+
+
+botLogic.js (467 líneas)
+  → CEREBRO ANTERIOR (ahora casi vacío, solo handleMediaMessage + notifyWig)
+  → EXPORTA: { handleMessage, handleMediaMessage, notifyWig }
+
+  handleMessage(phone, messageBody):
+    → Delega a aiBot.handleMessageIA() (la nueva IA)
+
+  handleMediaMessage(phone, mediaType):
+    → Responde a imágenes/audio con texto genérico
+
+  notifyWig(phone, session, motivo, resumen):
+    → FUNCIÓN CRÍTICA: notifica a Wig sobre escalación
+    → Verifica WIG_WHATSAPP_NUMBER (env var)
+    → Si fuera de horario → guarda en colaEscalaciones (Redis)
+    → Construye mensaje con:
+       - Nombre + teléfono cliente
+       - Ubicación (estado, ciudad, CP)
+       - Motivo + resumen de conversación
+       - Marca 🚨🚨🚨 si es URGENTE (frustrado, renotificación)
+    → Intenta enviar por twilioService.sendMessage()
+    → Si falla → guarda en cola para intentar después
+    → Retorna { fueraHorario: boolean }
+
+
+SHOPIFY INTEGRATION:
+────────────────────
+
+shopifyWebhookHandler.js (451 líneas)
+  → Procesa webhooks de Shopify (órdenes, clientes, etc)
+  → EXPORTA: No
+  → REQUIERE: botLogic, sessionManager, sheetsService, shopifyService, twilioService
+  → EVENTOS MANEJADOS:
+
+     1. customers/create:
+        - Cliente nuevo en Shopify
+        - Llama sheetsService.registerCustomer()
+        - Guarda en Google Sheets
+
+     2. customers/update:
+        - Cliente actualizado en Shopify (email, nombre, etc)
+        - Llama sheetsService.updateOrderData()
+        - Intenta encontrar por email, luego por teléfono
+
+     3. orders/paid (evento personalizado):
+        - Orden pagada en Shopify
+        - Busca cliente por email
+        - Actualiza: totalOrders, totalSpent, fechaCompra
+        - Envía mensaje de confirmación por WhatsApp
+
+     4. orders/updated, checkouts/create:
+        - No procesados actualmente (tema futuro)
+
+  → VARIABLES DE ENTORNO: SHOPIFY_WEBHOOK_SECRET
+
+
+GOOGLE SHEETS - ACCESO A DATOS:
+────────────────────────────────
+
+sheetsService.js (869 líneas - ARCHIVO MÁS GRANDE)
+  → Todo acceso a Google Sheets (lectura/escritura)
+  → EXPORTA: {
+        findCustomer, registerCustomer, updateOrderData,
+        appendConversationLog, appendNota, appendTag, updateSegmento,
+        lookupCpMX, getAllProductos, getKnowledgeBase,
+        addSeguimiento, invalidateCache
+     }
+
+  FUNCIONES PRINCIPALES:
+
+    findCustomer(phone):
+      → Busca cliente en "1 Base Maestra" por teléfono (columna D)
+      → Retorna: { rowIndex, phone, name, email, state, city, cp, etc }
+      → Cacheado: 10 min TTL (customerCache Map)
+      → NOTA: Timeout fue arreglado (ahora en gaxios options, no params)
+
+    registerCustomer(input):
+      → Crea nuevo cliente en "1 Base Maestra"
+      → Inserta fila con: phone, name, email, state, city, cp, segmento, etc
+
+    updateOrderData(rowIndex, fields):
+      → Actualiza cliente existente (totalOrders, totalSpent, name, cp, etc)
+      → Invalida cache si hay cambios
+
+    appendConversationLog(phone, name, transcript):
+      → Agrega a "5 Transcripciones" (límite: 48k caracteres)
+
+    appendNota, appendTag:
+      → Agrega notas o tags a "17 Notas" column del cliente
+
+    updateSegmento(phone, segmento):
+      → Marca cliente como: "Cliente final", "Mayoreo", "Distribuidor"
+
+    getAllProductos():
+      → Lee "7 Productos" (155+ productos)
+      → Retorna: nombre, precio, descripción, link
+      → Cacheado: 5 min
+
+    lookupCpMX(cp):
+      → Lee "2 Sucursales" para encontrar estado/ciudad por CP
+      → Devuelve: { state, city }
+
+  SHEETS SCHEMA:
+    1 Base Maestra:        ~3,950 contactos (cols A-S)
+    2 Sucursales:         36 sucursales
+    3 Rutas Reparto:      VACÍA (pendiente)
+    4 Seguimientos 24h:   logs de follow-ups
+    5 Transcripciones:    historial de chats
+    6 FAQs:               (no usado actualmente)
+    7 Productos:          155 productos
+
+
+SERVICIOS Y MANAGERS:
+─────────────────────
+
+sessionManager.js (182 líneas)
+  → Manejo de sesiones por cliente (Redis + fallback memoria)
+  → EXPORTA: {
+        getSession, createSession, updateSession, deleteSession,
+        getAllActiveSessions, getRedisClient
+     }
+  → TTL: 30 horas
+  → Estructura: { phone → { flowState, customer, tempData, conversationHistory, ... } }
+  → REQUIERE: redis (opcional), logger
+
+
+escalationManager.js (181 líneas)
+  → Gestión de escalaciones (NOTA: NO exporta module.exports - CÓDIGO MUERTO)
+  → Funciones definidas:
+     escalate(), notifyWig(), queueForLaterNotification(), handleWigCommand()
+  → CRÍTICO: No está siendo usado - aiBot.js llama directamente a botLogic.notifyWig()
+  → RECOMENDACIÓN: LIMPIAR - consolidar en una sola escalation logic
+
+
+claudeService.js (588 líneas)
+  → Integración con Claude API
+  → EXPORTA: { callClaude, buildHistoryMessages, buildSystemPrompt, ... }
+  → REQUIERE: @anthropic-ai/sdk, knowledgeService, sheetSchemas
+  → Funciones:
+     callClaude(phone, messages):
+       - Envía conversación a Claude Sonnet
+       - Incluye knowledge base + catálogo
+       - Retorna respuesta de IA
+
+
+horarioService.js (44 líneas)
+  → Verifica si está dentro de horario de atención
+  → EXPORTA: { estaEnHorario }
+  → LÓGICA:
+     L-V: 9am-9pm
+     Sábado: 9am-2pm
+     Domingo: Cerrado
+
+
+followUpService.js (230 líneas)
+  → Follow-ups automáticos (cron cada 15 min)
+  → EXPORTA: { runFollowUps }
+
+  TIPOS:
+    Follow-up A: Cliente "active" → 2h inactivo → mensaje personalizado
+    Follow-up C: Cliente "waiting_for_wig" → 23h inactivo → preguntar si fue atendido
+
+  SEGURIDAD: usa reclamar() con Redis SET NX (atomic) para evitar duplicados
+
+
+transcriptService.js (139 líneas)
+  → Guarda historial de conversaciones
+  → EXPORTA: { getExistingTranscript, updateTranscript, getTranscripts }
+  → Escribe en "5 Transcripciones" (Google Sheets)
+  → Límite: 48k caracteres por celda
+
+
+knowledgeService.js (202 líneas)
+  → Cache de conocimiento (catálogo, FAQs)
+  → EXPORTA: {
+        getKnowledgeBase, getAllProductos,
+        invalidateCache
+     }
+  → Lee "6 FAQs" y "7 Productos"
+  → TTL: 5 minutos
+
+
+colaEscalaciones.js (61 líneas)
+  → Cola Redis para escalaciones fuera de horario
+  → EXPORTA: { agregarEscalacion, obtenerEscalaciones, marcarPendiente }
+  → Estructura: { phone, nombre, resumen, timestamp }
+
+
+twilioService.js (25 líneas)
+  → Wrapper de Twilio para enviar mensajes
+  → EXPORTA: { sendMessage }
+  → Requiere: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER
+
+
+sessionUpdaters.js (191 líneas)
+  → Utilidades para actualizar sesión de forma atómica
+  → EXPORTA: No (CÓDIGO POSIBLEMENTE MUERTO)
+  → Funciones: updateSessionCP, updateSessionName, etc
+  → NOTA: Ver si se usa o si es redundante con sessionManager
+
+
+HELPER MODULES (utilidades):
+────────────────────────────
+
+validators.js (64 líneas)
+  → Validación de datos
+  → EXPORTA: { CPValidator, PhoneValidator }
+
+messageUtils.js (93 líneas)
+  → Limpiar y procesar mensajes
+  → EXPORTA: { cleanBotResponse, getFirstName, ... }
+
+stateHelpers.js (92 líneas)
+  → Helpers para máquina de estados (ANTIGUA)
+  → EXPORTA: { validateName, isGoodbye, ... }
+  → NOTA: Probablemente muerto (bot ahora usa IA, no máquina de estados)
+
+patternRegistry.js (131 líneas)
+  → 100+ regex patterns (CÓDIGO POSIBLEMENTE MUERTO)
+  → EXPORTA: No
+  → Usaba para detectar: intenciones, números, geografía, etc
+  → NOTA: aiBot.js ahora entiende contexto sin regex
+
+constants.js (40 líneas)
+  → Constantes globales (FLOW_STATES, TIME_CONSTANTS, etc)
+  → EXPORTA: { FLOW_STATES, TIME_CONSTANTS }
+
+horarioService.js (44 líneas)
+  → Ver arriba
+
+
+ANÁLISIS Y UTILIDADES:
+──────────────────────
+
+analyze-logs-daily.js (495 líneas)
+  → Análisis de logs de producción (para debugging)
+  → Detecta: errores, problemas de conversación, estadísticas
+
+generate-log.js (143 líneas)
+  → Genera log formateado de conversaciones para análisis manual
+
+tests.js (314 líneas)
+  → Suite de pruebas (probablemente desactualizado)
+
+production-analysis.js (317 líneas)
+  → Análisis de métricas de producción
+
+
+HANDLERS DE WIG (Admin):
+───────────────────────
+
+wigAdminHandler.js (221 líneas)
+  → Procesa comandos de Wig (asesor humano)
+  → EXPORTA: { handleWigCommand, isWigCommand }
+
+  COMANDOS:
+    /pendientes        → Ver escalaciones fuera de horario
+    /reparto PHONE     → Marcar cliente como distribuidor
+    /sucursal PHONE    → Redirigir a sucursal específica
+    /nocontesta PHONE  → Marcar como "No Contestó"
+    /atendido PHONE    → Limpiar sesión (cliente atendido)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+3. FLUJO DE UN MENSAJE (paso a paso)
+═══════════════════════════════════════════════════════════════════════════════
+
+ENTRADA:
+────────
+1. Cliente escribe en WhatsApp: "Hola, quiero info"
+
+TWILIO → WEBHOOK:
+──────────────────
+2. Twilio envía POST a /webhook/whatsapp (webhookHandler.js)
+3. webhookHandler extrae: from=+521234567890, body="Hola, quiero info"
+4. Deduplica por MessageSid (últimos 100 únicos)
+5. Responde a Twilio con 200 inmediato (async, no bloquea)
+6. Inicia debounce 1.5s (acumula mensajes rápidos)
+
+PROCESAMIENTO:
+───────────────
+7. webhookHandler.procesarMensaje() se ejecuta
+8. Carga transcripción previa de "5 Transcripciones"
+9. Carga o crea sesión: sessionManager.getSession(phone)
+
+MANEJO DE MENSAJE:
+───────────────────
+10. botLogic.handleMessage(phone, "Hola, quiero info")
+    → DELEGA a aiBot.handleMessageIA()
+
+IA CON TOOL CALLING:
+─────────────────────
+11. aiBot.handleMessageIA(phone, "Hola, quiero info"):
+    - Obtiene sesión actual
+    - Agrega mensaje a history: { role: 'user', content: "Hola..." }
+    - Construye MASTER_PROMPT + catálogo + FAQs
+    - Envía a Claude Sonnet con 3 herramientas
+
+12. Claude analiza:
+    - Entiende que quiere información
+    - Detecta que no tiene nombre/CP aún
+    - Responde: "¿Con quién tengo el gusto?"
+    - NO usa herramientas (stop_reason != 'tool_use')
+
+13. Retorna respuesta: "¿Con quién tengo el gusto?"
+
+PERSISTENCIA:
+──────────────
+14. aiBot guarda en history: { role: 'assistant', content: "¿Con quién...?" }
+15. sessionManager.updateSession() guarda sesión con nueva history
+16. transcriptService.updateTranscript() guarda en "5 Transcripciones"
+
+RESPUESTA AL CLIENTE:
+──────────────────────
+17. webhookHandler envía por Twilio:
+    twilioService.sendMessage(phone, "¿Con quién tengo el gusto?")
+18. Cliente ve respuesta en WhatsApp
+
+SIGUIENTE MENSAJE:
+───────────────────
+19. Cliente responde: "Juan García"
+20. Se repite desde paso 7, pero ahora history tiene contexto previo
+21. Claude detecta nombre, llama registrar_o_actualizar_cliente (herramienta 2)
+22. Herramienta ejecuta sheetsService.registerCustomer()
+23. Cliente se crea en "1 Base Maestra"
+24. Claude pregunta por CP
+
+
+ESCALACIÓN (si aplica):
+────────────────────────
+Si cliente dice "quiero entrega directa" o "urgente":
+25. Claude llama herramienta 3: escalar_a_wig(motivo, resumen)
+26. botLogic.notifyWig() se ejecuta:
+    - Verifica horario con horarioService.estaEnHorario()
+    - Si fuera de horario: colaEscalaciones.agregarEscalacion()
+    - Si en horario: twilioService.sendMessage(WIG_WHATSAPP_NUMBER, mensaje)
+27. Wig recibe alerta en su WhatsApp
+28. sessionManager.updateSession() marca flowState = 'waiting_for_wig'
+29. Cliente recibe: "Un asesor te contactará en breve"
+
+
+═══════════════════════════════════════════════════════════════════════════════
+4. EL CEREBRO IA (aiBot.js) - DETALLE TÉCNICO
+═══════════════════════════════════════════════════════════════════════════════
+
+MASTER_PROMPT (instrucciones de Claude):
+─────────────────────────────────────────
+
+El prompt le dice a Claude QUÉ es (asesor de Llabana) y CÓMO debe actuar:
+
+1. TONO:
+   - Directo y sencillo (platicando con gente de campo)
+   - Usa "tú", frases cortas
+   - Emojis con medida
+   - Entiende errores ortográficos
+
+2. FLUJO DE CONVERSACIÓN:
+   Paso 1: Saludar + capturar NOMBRE + APELLIDO + CP
+     - "Juan" sólo no vale → pide apellido
+     - Palabras como "gato", "perro", "gallina" NO son nombres
+     - En cuanto tiene nombre+apellido → llama registrar_o_actualizar_cliente
+
+   Paso 2: Llamar consultar_zona(cp) SIEMPRE que tenga CP
+     Según resultado:
+
+   a) "entrega_directa" (CDMX, Ecatepec):
+      → Recoge qué producto y cuánto necesita
+      → Llama escalar_a_wig()
+      → Cliente ve: "Un asesor lo contactará"
+
+   b) "paqueteria" (resto de México):
+      → Distingue 2 perfiles:
+
+         CLIENTE FINAL (mascota, <10 bultos):
+         → LO ATIENDE SOLO
+         → Recomienda 1 opción clara del catálogo
+         → Calcula bultos necesarios
+         → Da precio real
+         → Manda link llabanaenlinea.com
+         → Registra segmento "Cliente final"
+
+         MAYOREO/NEGOCIO (quiere revender, descuentos, >10 bultos):
+         → Dice HONESTO: "Por ahora solo hacemos pedidos chicos"
+         → NO manda link
+         → Registra segmento "Mayoreo fuera de zona"
+         → Cierra con cortesía
+
+3. REGLAS CRÍTICAS:
+   - Nunca revelar: cuántas sucursales, en qué estados está
+   - Nunca prometer: día exacto, entrega garantizada
+   - Nunca inventar: precios (usa catálogo real)
+   - Si hay queja/enojo/frustración → escalar a Wig
+
+
+HERRAMIENTAS (3 funciones que Claude puede llamar):
+────────────────────────────────────────────────────
+
+1. consultar_zona(cp)
+   - INPUT: cp (código postal 5 dígitos)
+   - OUTPUT: JSON { zona: 'entrega_directa'|'paqueteria', estado, ciudad }
+   - LÓGICA:
+     const ZONA_ENTREGA_CPS = ['550','551','552','555','540','541','06'];
+     if (cp.startsWith cualquier CPs) → 'entrega_directa'
+     else → 'paqueteria'
+   - LLAMADA INTERNA: sheetsService.lookupCpMX(cp)
+
+
+2. registrar_o_actualizar_cliente(input)
+   - INPUT: { nombre, apellido, cp, segmento, notas }
+   - LÓGICA:
+     const nombreCompleto = [nombre, apellido].join(' ')
+     const existing = sheetsService.findCustomer(phone)
+     if (existe) → sheetsService.updateOrderData(rowIndex, campos)
+     else → sheetsService.registerCustomer({ phone, name, nombreCompleto, ... })
+   - OUTPUT: "Cliente registrado." o "Cliente actualizado."
+
+
+3. escalar_a_wig(input)
+   - INPUT: { motivo, resumen }
+   - LÓGICA:
+     await botLogic.notifyWig(phone, session, motivo, resumen)
+     await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' })
+   - OUTPUT: "Escalado a Wig. Un asesor lo atenderá."
+   - NOTA: Esto dispara notifyWig() que:
+     - Si fuera de horario → guarda en Redis (colaEscalaciones)
+     - Si en horario → envía WhatsApp a Wig
+
+
+LOOP DE TOOL CALLING:
+─────────────────────
+
+Pseudocódigo:
+
+for (iteración = 1; iteración <= 5; iteración++) {
+
+  // Envía a Claude CON herramientas
+  response = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1024,
+    system: MASTER_PROMPT + catálogo + FAQs,
+    tools: [ consultar_zona, registrar_o_actualizar_cliente, escalar_a_wig ],
+    messages: history
+  })
+
+  // Extrae texto si hay
+  textos = response.content
+    .filter(b => b.type === 'text')
+    .map(b => b.text)
+  if (textos.length) finalText = textos.join('\n')
+
+  // Si Claude NO quiere usar herramientas → fin
+  if (response.stop_reason !== 'tool_use') break;
+
+  // Claude QUIERE usar herramientas → ejecutarlas
+  messages.push({ role: 'assistant', content: response.content })
+
+  results = []
+  for (cada tool_use en response.content) {
+    salida = ejecutarHerramienta(tool_use.name, tool_use.input, phone, session)
+    results.push({ type: 'tool_result', tool_use_id: tool_use.id, content: salida })
+  }
+
+  // Responde a Claude con resultados
+  messages.push({ role: 'user', content: results })
+}
+
+// Fin: Claude respondió sin herramientas
+history.push({ role: 'assistant', content: finalText })
+sessionManager.updateSession(phone, { conversationHistory: history })
+return finalText
+
+
+═══════════════════════════════════════════════════════════════════════════════
+5. WEBHOOKS DE SHOPIFY
+═══════════════════════════════════════════════════════════════════════════════
+
+ARCHIVO: shopifyWebhookHandler.js (451 líneas)
+
+VERIFICACIÓN DE FIRMA:
+──────────────────────
+Shopify envía header: X-Shopify-Hmac-SHA256
+Calculamos: HMAC(payload, SHOPIFY_WEBHOOK_SECRET)
+Si no coincide → rechazamos (no procesamos datos falsos)
+
+
+EVENTOS PROCESADOS:
+────────────────────
+
+1. customers/create
+   Disparo: Cliente nuevo en Shopify admin
+
+   LÓGICA:
+     - Extrae: email, nombre, teléfono, etc
+     - Llama sheetsService.registerCustomer({
+         phone, name, email, channel: 'shopify', ...
+       })
+     - Guarda en "1 Base Maestra"
+     - NO envía WhatsApp (cliente aún no interactúa)
+
+
+2. customers/update
+   Disparo: Cambio en perfil de cliente (email, nombre, phone, etc)
+
+   LÓGICA:
+     - Busca cliente en Sheets por email, luego por phone
+     - Llama sheetsService.updateOrderData(rowIndex, {
+         name, email, phone, ...
+       })
+     - Actualiza registro existente
+     - Ignora si no encuentra cliente
+
+
+3. orders/paid (EVENTO PERSONALIZADO)
+   Disparo: Orden pagada en tienda Shopify
+
+   LÓGICA:
+     - Extrae: email, cantidad de items, monto ($)
+     - Busca cliente por email en Sheets
+     - Llama sheetsService.updateOrderData(rowIndex, {
+         totalOrders: count + 1,
+         totalSpent: amount + previous,
+         fechaCompra: hoy
+       })
+     - Envía WhatsApp de confirmación (si el cliente tiene phone en Sheets)
+     - Mensaje: "Orden confirmada. Entrega: X días."
+
+
+4. orders/updated
+   Disparo: Orden actualizada (cambio de estado, etc)
+
+   ESTADO: No procesado actualmente (tema futuro)
+
+
+5. checkouts/create
+   Disparo: Carrito creado
+
+   ESTADO: No procesado actualmente (tema futuro)
+
+
+VARIABLES DE ENTORNO REQUERIDAS:
+─────────────────────────────────
+SHOPIFY_WEBHOOK_SECRET        (para verificar firma HMAC)
+SHOPIFY_CLIENT_ID             (autenticación Admin API)
+SHOPIFY_CLIENT_SECRET         (autenticación Admin API)
+SHOPIFY_STORE_URL             (URL de la tienda)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+6. BASE DE DATOS (GOOGLE SHEETS)
+═══════════════════════════════════════════════════════════════════════════════
+
+SHEET ID: 1j1kgEL7BhP09rZy7bYKC0ay6rNPe_-8BnAwx5kzFtaM
+
+PESTAÑA 1: "1 Base Maestra" (~3,950 contactos)
+─────────────────────────────────────────────
+Columnas (A=0 a S=18):
+  A (0):  Segmento actual
+  B (1):  Nombre
+  C (2):  Email
+  D (3):  Teléfono                    ← CLAVE DE BÚSQUEDA
+  E (4):  Acepta email marketing
+  F (5):  Acepta WhatsApp
+  G (6):  Estado
+  H (7):  Ciudad
+  I (8):  Código Postal
+  J (9):  Total órdenes
+  K (10): Monto gastado ($)
+  L (11): Fecha última compra         (YYYY-MM-DD)
+  M (12): Sitio de origen             (WhatsApp, Shopify, etc)
+  N (13): Punto de entrada            (Directo, Facebook, etc)
+  O (14): Historial de tags
+  P (15): Fecha primer contacto
+  Q (16): Asesoría LlosaGPT           ← TRANSCRIPT del chat (48k max)
+  R (17): Notas
+  S (18): Último movimiento           (YYYY-MM-DD HH:MM, auto)
+
+OPERACIONES:
+  - Leer: findCustomer(phone) → búsqueda en columna D
+  - Crear: registerCustomer() → append fila
+  - Actualizar: updateOrderData() → update celdas
+
+
+PESTAÑA 2: "2 Sucursales" (36 sucursales)
+──────────────────────────────────────────
+Columnas:
+  A: # (número)
+  B: Nombre sucursal
+  C: Estado
+  D: Municipio / Ciudad             ← BÚSQUEDA por ciudad
+  E: C.P.
+  F: Dirección completa
+  G: Horario
+  H: Teléfono sucursal
+  I: Coordenadas
+  J: Notas bot
+
+OPERACIONES:
+  - Leer: lookupCpMX(cp) → busca estado/ciudad por CP
+
+
+PESTAÑA 3: "3 Rutas Reparto" (VACÍA)
+─────────────────────────────────────
+Pendiente: Llenar con Gerardo (rutas de entrega por ciudad)
+
+
+PESTAÑA 4: "4 Seguimientos 24h"
+───────────────────────────────
+Columnas:
+  A: Teléfono
+  B: Nombre
+  C: Fecha/Hora
+  D: Motivo
+  E: Estado
+  F: Notas
+
+OPERACIONES:
+  - Crear: addSeguimiento() → append fila (follow-ups, escalaciones)
+
+
+PESTAÑA 5: "5 Transcripciones"
+──────────────────────────────
+Columnas:
+  A: Teléfono
+  B: Nombre
+  C: Transcript                     (límite 48k caracteres por celda)
+
+OPERACIONES:
+  - Leer: getExistingTranscript(phone)
+  - Actualizar: updateTranscript(phone, nombre, lineas)
+
+
+PESTAÑA 6: "6 FAQs" (No usado actualmente)
+───────────────────────────────────────────
+Documentación de preguntas frecuentes (potencial futuro)
+
+
+PESTAÑA 7: "7 Productos" (155+ productos)
+──────────────────────────────────────────
+Columnas:
+  A: Nombre producto
+  B: Presentación (20kg, 25kg, etc)
+  C: Precio ($)
+  D: Descripción (animal, etapa, uso)
+  E: Link compra (llabanaenlinea.com)
+  F: Stock (control interno)
+  G: Categoría (alimento, mineral, etc)
+
+OPERACIONES:
+  - Leer: getAllProductos() → devuelve array con todos
+  - Caché: 5 min TTL
+
+
+═══════════════════════════════════════════════════════════════════════════════
+7. VARIABLES DE ENTORNO UTILIZADAS
+═══════════════════════════════════════════════════════════════════════════════
+
+VARIABLES ENCONTRADAS EN CÓDIGO:
+─────────────────────────────────
+
+SERVICIO DE IA (Claude):
+  ANTHROPIC_API_KEY                Clave API Claude (requerida)
+
+SERVICIO DE MENSAJERÍA (Twilio):
+  TWILIO_ACCOUNT_SID               ID cuenta Twilio
+  TWILIO_AUTH_TOKEN                Token autenticación Twilio
+  TWILIO_WHATSAPP_NUMBER           Número del bot WhatsApp (+17623490579)
+  WIG_WHATSAPP_NUMBER              Número del asesor Wig (+5215648076361)
+
+BASE DE DATOS (Google Sheets):
+  GOOGLE_SHEETS_ID                 ID de la hoja de cálculo
+  GOOGLE_SERVICE_ACCOUNT_JSON      JSON con credenciales de servicio
+  GOOGLE_SERVICE_ACCOUNT_BASE      [Probablemente desuso]
+
+SHOPIFY:
+  SHOPIFY_WEBHOOK_SECRET           Para verificar firma HMAC de webhooks
+  SHOPIFY_CLIENT_ID                Autenticación Admin API
+  SHOPIFY_CLIENT_SECRET            Autenticación Admin API
+  SHOPIFY_STORE_URL                URL de la tienda (ej: tienda.myshopify.com)
+
+PERSISTENCIA (Redis):
+  REDIS_URL                        URL conexión Redis (ej: redis://...)
+  REDIS_HOST                       Host Redis (alternativa a URL)
+  REDIS_PORT                       Puerto Redis (default 6379)
+  REDIS_DB                         Número DB Redis (default 0)
+
+SISTEMA:
+  NODE_ENV                         Entorno (development, production)
+  PORT                             Puerto Express (default 3000)
+  DEBUG                            Flag para logs detallados
+  LOG_LEVEL                        Nivel de logging
+  RAILWAY_GIT_COMMIT_SHA           SHA del commit (para versioning)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+8. CÓDIGO POSIBLEMENTE MUERTO O HUÉRFANO
+═══════════════════════════════════════════════════════════════════════════════
+
+CRÍTICO - NO EXPORTA:
+─────────────────────
+
+escalationManager.js (181 líneas)
+  → Archivo COMPLETO sin module.exports
+  → Define funciones: escalate(), notifyWig(), queueForLaterNotification(), handleWigCommand()
+  → PROBLEMA: botLogic.js NO lo requiere
+  → ACCIÓN: Revisar si debería estar aquí o si botLogic.notifyWig() lo reemplazó
+  → RECOMENDACIÓN: ELIMINAR si es código viejo (parece que sí - aiBot lo reemplazó)
+
+
+sessionUpdaters.js (191 líneas)
+  → NO exporta module.exports
+  → Define: updateSessionCP(), updateSessionName(), etc
+  → PROBLEMA: No aparece ningún require en botLogic/webhookHandler/aiBot
+  → ACCIÓN: Buscar si algo lo requiere
+  → RECOMENDACIÓN: PROBABLEMENTE MUERTO - eliminar después de verificar
+
+
+CÓDIGO VIEJO (máquina de estados - REEMPLAZADO POR IA):
+────────────────────────────────────────────────────────
+
+activeStateHandlers.js (221 líneas)
+  → Handlers de estados antigua máquina (asking_mexico, asking_name, etc)
+  → PROBLEMA: aiBot.js reemplazó todo esto (ahora IA entiende contexto)
+  → RECOMENDACIÓN: ELIMINAR - es código legado
+
+
+stateHelpers.js (92 líneas)
+  → Helpers para máquina de estados (validateName, isGoodbye, etc)
+  → PROBLEMA: No se requiere en código actual
+  → RECOMENDACIÓN: ELIMINAR - es código legado
+
+
+stateMachine.js (148 líneas)
+  → Máquina de estados formal (transiciones entre estados)
+  → PROBLEMA: aiBot.js NO la usa (simplificó todo)
+  → RECOMENDACIÓN: ELIMINAR - reemplazado por IA
+
+
+patternRegistry.js (131 líneas)
+  → 100+ regex patterns para detectar intenciones, números, etc
+  → PROBLEMA: aiBot.js NO lo requiere (Claude entiende contexto)
+  → RECOMENDACIÓN: ELIMINAR - patrón legacy
+
+
+flowOrchestrator.js (159 líneas)
+  → Orquestador de flujo conversacional
+  → PROBLEMA: no se requiere en código actual
+  → RECOMENDACIÓN: Verificar si se usa antes de eliminar
+
+
+POSIBLEMENTE MUERTO:
+────────────────────
+
+tests.js (314 líneas)
+  → Suite de pruebas
+  → PROBLEMA: No se ejecuta en ningún lado (sin npm test)
+  → RECOMENDACIÓN: O actualizar si es testing real, o eliminar
+
+
+production-analysis.js (317 líneas)
+  → Análisis de logs en producción
+  → PROBLEMA: No se requiere en código activo
+  → RECOMENDACIÓN: Puede estar bien como herramienta auxiliar
+
+
+claudeWrappers.js (107 líneas)
+  → Wrappers de funciones Claude
+  → PROBLEMA: Parece duplicado de funcionalidad en claudeService.js
+  → RECOMENDACIÓN: Verificar si se requiere o consolidar con claudeService
+
+
+analyze-logs-daily.js (495 líneas)
+  → Análisis diario de logs
+  → PROBLEMA: No se requiere en código activo (es utilidad manual)
+  → RECOMENDACIÓN: Puede estar bien como herramienta auxiliar
+
+
+generate-log.js (143 líneas)
+  → Generador de logs
+  → PROBLEMA: No se requiere en código activo
+  → RECOMENDACIÓN: Puede estar bien como herramienta auxiliar
+
+
+═══════════════════════════════════════════════════════════════════════════════
+9. SERVICIOS QUE FALTAN O ROTOS
+═══════════════════════════════════════════════════════════════════════════════
+
+REQUIRE STATEMENTS VALIDADOS:
+──────────────────────────────
+
+✅ Verificado: Todos los require('./...') resuelven a archivos que existen
+
+En botLogic.js:
+  ✅ require('./sessionManager')
+  ✅ require('./sheetsService')
+  ✅ require('./claudeService')
+  ✅ require('./twilioService')
+  ✅ require('./horarioService')
+  ✅ require('./colaEscalaciones')
+  ✅ require('./escalationManager')  [aunque no se usa]
+  [y otros]
+
+En aiBot.js:
+  ✅ require('@anthropic-ai/sdk')
+  ✅ require('./sessionManager')
+  ✅ require('./sheetsService')
+  ✅ require('./knowledgeService')
+
+En index.js:
+  ✅ express, bodyParser, path, rateLimit
+  ✅ require('./webhookHandler')
+  ✅ require('./shopifyWebhookHandler')
+  ✅ require('./transcriptService')
+  ✅ require('./knowledgeService')
+  ✅ require('./followUpService')
+  ✅ require('./colaEscalaciones')
+  ✅ require('./sessionManager')
+
+
+FUNCIONES LLAMADAS PERO NO DEFINIDAS:
+──────────────────────────────────────
+
+❓ REVISAR: sheetsService.lookupCpMX()
+   - Llamada desde: aiBot.js → toolConsultarZona()
+   - Definida en: sheetsService.js (necesario verificar exactamente)
+   - ESTADO: Parece OK
+
+
+❓ REVISAR: knowledgeService.getAllProductos()
+   - Llamada desde: aiBot.js
+   - Definida en: knowledgeService.js
+   - ESTADO: Parece OK
+
+
+CONFLICTOS DE ESCALACIÓN:
+──────────────────────────
+
+CRÍTICO: Dos caminos para escalar:
+
+1. aiBot.js → toolEscalar() → botLogic.notifyWig()
+   (Nuevo, recomendado)
+
+2. escalationManager.js → notifyWig()
+   (Viejo, no se usa)
+
+RECOMENDACIÓN: Consolidar en un solo lugar
+
+
+═══════════════════════════════════════════════════════════════════════════════
+RESUMEN EJECUTIVO - ENCONTRADO EN ANÁLISIS
+═══════════════════════════════════════════════════════════════════════════════
+
+CÓDIGO MUERTO (Recomendar eliminar):
+─────────────────────────────────────
+
+CRÍTICO (sin module.exports, no usado):
+  ❌ escalationManager.js (181 líneas) - Reemplazado por botLogic.notifyWig()
+  ❌ sessionUpdaters.js (191 líneas) - No se requiere en ningún lado
+  ❌ zoneChecker.js (88 líneas) - No se requiere en ningún lado
+
+LEGACY (máquina de estados antigua, reemplazada por IA):
+  ❌ activeStateHandlers.js (221 líneas)
+  ❌ stateHelpers.js (92 líneas)
+  ❌ stateMachine.js (148 líneas)
+  ❌ patternRegistry.js (131 líneas)
+  ❌ flowOrchestrator.js (159 líneas)
+
+PROBABLEMENTE OK COMO HERRAMIENTA (pero no integrada):
+  ⚠️  tests.js (314 líneas) - Suite de pruebas desactualizada
+  ⚠️  production-analysis.js (317 líneas) - Análisis manual
+  ⚠️  analyze-logs-daily.js (495 líneas) - Análisis manual
+  ⚠️  generate-log.js (143 líneas) - Generador manual
+
+POSIBLE DUPLICACIÓN:
+  ⚠️  claudeWrappers.js (107 líneas) - Revisar si está duplicada con claudeService.js
+
+
+SERVICIOS ROTOS:
+─────────────────
+
+NINGUNO ENCONTRADO en requires → TODOS resuelven a archivos que existen
+
+Sin embargo:
+  ⚠️  logger.js (40 líneas) - NO exporta module.exports
+      Llamada desde: casi todos los archivos
+      PERO: Es ejecutable (console.log/warn/error directo)
+      RIESGO: Futuro - mejor exportar explícitamente
+
+
+CONFLICTOS DETECTADOS:
+───────────────────────
+
+1. Escalación duplicada:
+   - botLogic.notifyWig() (nuevo, recomendado)
+   - escalationManager.notifyWig() (viejo, no usado)
+   → Consolidar en UN SOLO lugar
+
+2. Pattern matching:
+   - patternRegistry.js (100+ patterns)
+   - aiBot.js NO lo usa (Claude entiende contexto)
+   → Código legacy inútil
+
+3. State machine:
+   - stateMachine.js + activeStateHandlers.js + stateHelpers.js
+   - Reemplazado completamente por aiBot.js
+   → Todo viejo
+
+
+═══════════════════════════════════════════════════════════════════════════════
+FIN DEL DOCUMENTO
+═══════════════════════════════════════════════════════════════════════════════
+
+Fecha de análisis: 2026-06-09
+Analista: Claude (lectura de código real)
+Próxima revisión recomendada: Después de limpiar código muerto
+
