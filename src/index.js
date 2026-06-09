@@ -29,6 +29,8 @@ const colaEscalaciones   = require('./colaEscalaciones');
 const { getRedisClient } = require('./sessionManager');
 
 const app = express();
+// Railway corre detrás de un proxy: confiar en X-Forwarded-For (necesario para rate-limit)
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // Rate limiters para webhooks

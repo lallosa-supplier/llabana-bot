@@ -239,7 +239,8 @@ async function findCustomer(phone) {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SHEET_BASE}!A:S`,
-      timeout: 10000,
+    }, {
+      timeout: 10000, // gaxios options (2º arg) — NO va en los params de la API
     });
 
     const rows = res.data.values || [];
