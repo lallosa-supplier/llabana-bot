@@ -1,0 +1,149 @@
+const Anthropic = require('@anthropic-ai/sdk');
+const sessionManager  = require('./sessionManager');
+const sheetsService   = require('./sheetsService');
+const knowledgeService = require('./knowledgeService');
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+// ⚠️ AJUSTAR CON DIEGO: prefijos de CP de la zona de ENTREGA DIRECTA
+// (centro CDMX + cercanías de Ecatepec). Set inicial aproximado.
+const ZONA_ENTREGA_CPS = ['550', '551', '552', '555', '540', '541', '06'];
+
+const MASTER_PROMPT = `Eres el asistente de Llabana, alimento balanceado para todas las especies (perros, gatos, caballos, cerdos, ganado, borregos, aves, peces). Estás en Ecatepec, Estado de México.
+
+TONO: directo y sencillo, como platicando con gente de campo. Usa "tú", frases cortas, emojis con medida. Entiende al cliente aunque escriba con errores. Nunca uses "usted".
+
+QUÉ HACES (en orden):
+1. Saluda y capta NOMBRE y APELLIDO del cliente, y su CÓDIGO POSTAL. Entiende los nombres aunque vengan con typos o mezclados; palabras como "gato", "perro", "gallina" NO son nombres. En cuanto tengas nombre y apellido, llama a registrar_o_actualizar_cliente.
+2. Cuando tengas el CP, SIEMPRE llama a consultar_zona(cp) antes de decidir cómo atender.
+
+SEGÚN LA ZONA QUE DEVUELVA consultar_zona:
+- "entrega_directa" → Hay entrega directa. Recoge qué producto y cuánto necesita, y llama escalar_a_wig con un resumen completo. Dile que un asesor lo contactará por aquí.
+- "paqueteria" → Distingue al cliente:
+   - CLIENTE FINAL (mascota o pocos animales, hasta 10 bultos / 250 kg): atiéndelo COMPLETO. Recomienda UNA opción clara del catálogo (la más adecuada a su animal/etapa), calcula cuántos bultos necesita, dale el precio del catálogo, y mándale el link de llabanaenlinea.com para cerrar. Registra con segmento "Cliente final".
+   - MAYOREO / NEGOCIO / REVENTA (quiere revender, poner forrajería/negocio, pide descuentos o precios de mayoreo, o más de 10 bultos): dile de forma AMABLE y HONESTA que por ahora solo entregamos pedidos chicos por paquetería y que para el volumen que busca no tenemos cobertura en su zona todavía. NO le mandes el link. Registra con segmento "Mayoreo fuera de zona". Cierra con cortesía, sin prometer nada.
+
+EN CUALQUIER MOMENTO, si hay queja, enojo, problema con un pedido, o el cliente pide hablar con una persona → llama escalar_a_wig.
+
+ASESORÍA: recomienda UNA opción clara, no abras menús de opciones salvo que el cliente pida más. Calcula bultos y cotiza con el precio real del catálogo. No ofrezcas productos adicionales por ahora.
+
+NUNCA: reveles cuántas sucursales o en qué estados está Llabana (di solo "Estado de México" y pregunta su ubicación); prometas un día exacto de recolección o entrega (depende de la paquetería); inventes precios (usa siempre el catálogo).
+
+Usa las herramientas para ACTUAR (registrar, consultar zona, escalar). Lo que escribas es lo que el cliente lee.`;
+
+const TOOLS = [
+  {
+    name: 'consultar_zona',
+    description: 'Determina si un CP mexicano está en zona de entrega directa (centro CDMX o cerca de Ecatepec) o si solo aplica paquetería. Llama esto SIEMPRE que tengas el CP, antes de decidir cómo atender.',
+    input_schema: { type: 'object', properties: { cp: { type: 'string', description: 'Código postal de 5 dígitos' } }, required: ['cp'] },
+  },
+  {
+    name: 'registrar_o_actualizar_cliente',
+    description: 'Guarda o actualiza al cliente en la base. Úsalo en cuanto tengas nombre y apellido, y otra vez cuando tengas CP o definas su segmento.',
+    input_schema: { type: 'object', properties: {
+      nombre: { type: 'string' }, apellido: { type: 'string' }, cp: { type: 'string' },
+      segmento: { type: 'string', description: 'Cliente final | Mayoreo fuera de zona | Lead frío' },
+      notas: { type: 'string', description: 'Qué pidió o detalle relevante' },
+    }, required: [] },
+  },
+  {
+    name: 'escalar_a_wig',
+    description: 'Pasa la conversación a un asesor humano (Wig). SOLO cuando: el cliente está en zona de entrega directa; hay queja/enojo/problema con un pedido; o pide hablar con una persona. Incluye un resumen completo.',
+    input_schema: { type: 'object', properties: {
+      motivo: { type: 'string', description: 'Razón corta' },
+      resumen: { type: 'string', description: 'Resumen de la conversación y datos del cliente' },
+    }, required: ['motivo'] },
+  },
+];
+
+async function toolConsultarZona(cp) {
+  const limpio = String(cp || '').replace(/\D/g, '');
+  let estado = '', ciudad = '';
+  try { const r = await sheetsService.lookupCpMX(limpio); estado = r.state || ''; ciudad = r.city || ''; } catch (e) {}
+  const entrega = ZONA_ENTREGA_CPS.some(p => limpio.startsWith(p));
+  return JSON.stringify({ zona: entrega ? 'entrega_directa' : 'paqueteria', estado, ciudad });
+}
+
+async function toolRegistrar(input, phone) {
+  const nombreCompleto = [input.nombre, input.apellido].filter(Boolean).join(' ').trim();
+  const existing = await sheetsService.findCustomer(phone);
+  if (existing) {
+    const campos = {};
+    if (nombreCompleto) campos.name = nombreCompleto;
+    if (input.cp) campos.cp = input.cp;
+    if (input.segmento) campos.segmento = input.segmento;
+    if (input.notas) campos.notas = input.notas;
+    await sheetsService.updateOrderData(existing.rowIndex, campos);
+    return 'Cliente actualizado.';
+  }
+  await sheetsService.registerCustomer({
+    phone, name: nombreCompleto, email: '', state: '', city: '', cp: input.cp || '',
+    channel: 'paqueteria', channelDetail: 'Nacional', segmento: input.segmento || 'Lead frío',
+    aceWa: 'SI', entryPoint: 'Directo', origen: 'WhatsApp',
+  });
+  return 'Cliente registrado.';
+}
+
+async function toolEscalar(input, phone, session) {
+  const { notifyWig } = require('./botLogic');
+  await notifyWig(phone, session, input.motivo || 'Escalación', input.resumen || '');
+  await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
+  return 'Escalado a Wig. Un asesor lo atenderá.';
+}
+
+async function ejecutarHerramienta(nombre, input, phone, session) {
+  try {
+    if (nombre === 'consultar_zona') return await toolConsultarZona(input.cp);
+    if (nombre === 'registrar_o_actualizar_cliente') return await toolRegistrar(input, phone);
+    if (nombre === 'escalar_a_wig') return await toolEscalar(input, phone, session);
+    return 'Herramienta desconocida';
+  } catch (err) {
+    console.error(`[AI-BOT] Error en herramienta ${nombre}:`, err.message);
+    return `Error ejecutando ${nombre}`;
+  }
+}
+
+async function buildSystem() {
+  let kb = '', productos = '';
+  try { kb = await knowledgeService.getKnowledgeBase(); } catch (e) {}
+  try { productos = await knowledgeService.getAllProductos(); } catch (e) {}
+  return MASTER_PROMPT
+    + (kb ? `\n\n━━━ CONOCIMIENTO ━━━\n${kb}` : '')
+    + (productos ? `\n\n━━━ CATÁLOGO ━━━\n${productos}` : '');
+}
+
+async function handleMessageIA(phone, messageBody) {
+  let session = (await sessionManager.getSession(phone)) || (await sessionManager.createSession(phone));
+  const history = session.conversationHistory || [];
+  history.push({ role: 'user', content: messageBody });
+
+  const system = await buildSystem();
+  let messages = history.slice(-20);
+  let finalText = '';
+
+  for (let i = 0; i < 5; i++) {
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-6', max_tokens: 1024, system, tools: TOOLS, messages,
+    });
+    const textos = response.content.filter(b => b.type === 'text').map(b => b.text);
+    if (textos.length) finalText = textos.join('\n').trim();
+
+    if (response.stop_reason !== 'tool_use') break;
+
+    messages.push({ role: 'assistant', content: response.content });
+    const results = [];
+    for (const b of response.content) {
+      if (b.type !== 'tool_use') continue;
+      console.log(`🤖 [AI-BOT] tool: ${b.name} ${JSON.stringify(b.input)}`);
+      const out = await ejecutarHerramienta(b.name, b.input, phone, session);
+      results.push({ type: 'tool_result', tool_use_id: b.id, content: out });
+    }
+    messages.push({ role: 'user', content: results });
+  }
+
+  history.push({ role: 'assistant', content: finalText });
+  await sessionManager.updateSession(phone, { conversationHistory: history });
+  return finalText || 'Disculpa, ¿me repites?';
+}
+
+module.exports = { handleMessageIA };
