@@ -5,9 +5,15 @@ const knowledgeService = require('./knowledgeService');
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// ⚠️ AJUSTAR CON DIEGO: prefijos de CP de la zona de ENTREGA DIRECTA
-// (centro CDMX + cercanías de Ecatepec). Set inicial aproximado.
-const ZONA_ENTREGA_CPS = ['550', '551', '552', '555', '540', '541', '06'];
+const ESTADOS_ENTREGA_DIRECTA = ['ciudad de mexico', 'estado de mexico'];
+
+function normalizarEstado(s) {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')   // quita acentos
+    .trim();
+}
 
 const MASTER_PROMPT = `Eres el asistente de Llabana, alimento balanceado para todas las especies (perros, gatos, caballos, cerdos, ganado, borregos, aves, peces). Estás en Ecatepec, Estado de México.
 
@@ -65,7 +71,7 @@ async function toolConsultarZona(cp) {
   const limpio = String(cp || '').replace(/\D/g, '');
   let estado = '', ciudad = '';
   try { const r = await sheetsService.lookupCpMX(limpio); estado = r.state || ''; ciudad = r.city || ''; } catch (e) {}
-  const entrega = ZONA_ENTREGA_CPS.some(p => limpio.startsWith(p));
+  const entrega = ESTADOS_ENTREGA_DIRECTA.includes(normalizarEstado(estado));
   return JSON.stringify({ zona: entrega ? 'entrega_directa' : 'paqueteria', estado, ciudad });
 }
 
