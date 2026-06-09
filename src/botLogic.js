@@ -379,11 +379,88 @@ async function handleConfirmingName(phone, message, session) {
 
 /**
  * Notifica a Wig sobre una escalación
- * (Delega a EscalationManager)
  */
-async function notifyWig(phone, session, motivo, resumen = '') {
-  const escalationManager = require('./escalationManager');
-  return await escalationManager.notifyWig(phone, session, motivo, { resumen });
+async function notifyWig(phone, session, motivo = '', resumen = '') {
+  const wigNumber = process.env.WIG_WHATSAPP_NUMBER;
+  if (!wigNumber) {
+    console.warn('WIG_WHATSAPP_NUMBER no configurado.');
+    return { fueraHorario: false };
+  }
+
+  const customer   = session.customer || {};
+  const tempData   = session.tempData  || {};
+  const history    = (session.conversationHistory || []).slice(-8);
+  const transcript = history.length
+    ? history.map(m => `${m.role === 'user' ? '👤' : '🤖'}: ${m.content}`).join('\n')
+    : '(sin historial previo)';
+
+  const nombre   = customer.name  || tempData.name  || 'Sin nombre';
+  const estado   = customer.state || tempData.state || '';
+  const ciudad   = customer.city  || tempData.city  || '';
+  const cp       = customer.cp    || tempData.cp    || '';
+  const resumenF = tempData.resumenEscalacion || motivo || '';
+
+  const resumenLimpio = resumenF
+    .replace(/^Perfil mayoreo\/negocio:\s*/i, '')
+    .replace(/^Cliente solicita asesor humano\s*/i, '')
+    .replace(/^Detectado por Claude\s*/i, '')
+    .replace(/^Zona local[^:]*:\s*/i, '')
+    .replace(/^"+|"+$/g, '')
+    .trim();
+
+  const ubicacion = [estado, ciudad, cp ? `CP: ${cp}` : '']
+    .filter(Boolean).join(' | ');
+
+  if (!horarioService.estaEnHorario()) {
+    await colaEscalaciones.agregarEscalacion({
+      phone, nombre, resumen: resumenLimpio || motivo, timestamp: Date.now(),
+    });
+    await sessionManager.updateSession(phone, {
+      tempData: { ...session.tempData, escalacionPendiente: true },
+    });
+    console.log(`📥 [COLA] Fuera de horario — escalación de ${nombre} guardada para después`);
+    return { fueraHorario: true };
+  }
+
+  const telMostrar = phone.replace('whatsapp:', '');
+  const esUrgente = (motivo || '').toUpperCase().includes('URGENTE') ||
+                    (motivo || '').includes('frustrado') ||
+                    (motivo || '').includes('renotificación');
+
+  const msg = esUrgente
+    ? `🚨🚨🚨 *URGENTE — ATENDER AHORA*\n\n` +
+      `👤 *${nombre}* | ${telMostrar}\n` +
+      (ubicacion ? `📍 ${ubicacion}\n` : '') +
+      `⚠️ ${resumenLimpio}\n\n` +
+      `*Escribe a este número AHORA 👆*`
+    : `🚨 *NUEVA SOLICITUD*\n\n` +
+      `👤 *${nombre}* | ${telMostrar}\n` +
+      (ubicacion ? `📍 ${ubicacion}\n` : '') +
+      (resumenLimpio ? `📝 ${resumenLimpio}` : '');
+
+  console.log(`📤 Intentando notificar a Wig | to: ${wigNumber} | motivo: ${motivo}`);
+  try {
+    const result = await twilioService.sendMessage(wigNumber, msg);
+    console.log(`📲 Wig notificado | sid: ${result.sid} | status: ${result.status} | errorCode: ${result.errorCode ?? 'none'} | errorMsg: ${result.errorMessage ?? 'none'}`);
+    const falloEnvio = !!result.errorCode ||
+      ['failed', 'undelivered'].includes((result.status || '').toLowerCase());
+    if (falloEnvio) {
+      await colaEscalaciones.agregarEscalacion({ phone, nombre, resumen: resumenLimpio || motivo, timestamp: Date.now() });
+      await sessionManager.updateSession(phone, { tempData: { ...session.tempData, escalacionPendiente: true } });
+      console.warn(`⚠️ [COLA] Mensaje a Wig falló (errorCode=${result.errorCode ?? 'n/a'}, status=${result.status}) — escalación de ${nombre} guardada en cola`);
+    }
+    return { fueraHorario: false };
+  } catch (err) {
+    console.error(`❌ Error notificando a Wig | code: ${err.code} | status: ${err.status} | msg: ${err.message} | moreInfo: ${err.moreInfo}`);
+    try {
+      await colaEscalaciones.agregarEscalacion({ phone, nombre, resumen: resumenLimpio || motivo, timestamp: Date.now() });
+      await sessionManager.updateSession(phone, { tempData: { ...session.tempData, escalacionPendiente: true } });
+      console.warn(`⚠️ [COLA] Excepción al notificar a Wig — escalación de ${nombre} guardada en cola`);
+    } catch (qErr) {
+      console.error('Error guardando escalación en cola:', qErr.message);
+    }
+    return { fueraHorario: false };
+  }
 }
 
 module.exports = { handleMessage, handleMediaMessage, notifyWig };
