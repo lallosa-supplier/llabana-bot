@@ -115,6 +115,50 @@ function detectBugs(logContent, conversations) {
 }
 
 /**
+ * Detecta y agrupa errores de runtime ([err]) del log.
+ * Railway marca cada error con el tag [err]. Agrupamos por "firma" (mensaje
+ * normalizado, sin números variables) para contar cuántas veces ocurre cada uno.
+ * Esto es lo que faltaba: bugs como el de findCustomer tronaban días sin verse.
+ */
+function detectErrors(logContent) {
+  const lines = logContent.split('\n');
+  const grupos = {};
+
+  for (const line of lines) {
+    if (!line.includes('[err]')) continue;
+    const msg = line.replace(/^\S+\s+\[err\]\s*/, '').trim();
+    if (!msg) continue;
+
+    // Normalizar para agrupar: colapsar teléfonos/ids/números variables
+    const firma = msg
+      .replace(/\+?\d[\d\s-]{6,}\d/g, '#ID#')
+      .replace(/\b\d+\b/g, '#N#')
+      .substring(0, 120);
+
+    if (!grupos[firma]) grupos[firma] = { count: 0, sample: msg.substring(0, 160) };
+    grupos[firma].count++;
+  }
+
+  return Object.values(grupos).sort((a, b) => b.count - a.count);
+}
+
+/**
+ * Mide el embudo y la salud de escalaciones leyendo el log.
+ * Da visión de qué convierte y si las escalaciones a Wig están saliendo.
+ */
+function analyzeFunnel(logContent) {
+  const count = (re) => (logContent.match(re) || []).length;
+  return {
+    onboardingsNuevos:     count(/¿Con quién tengo el gusto\?/g),
+    cpSolicitados:         count(/código postal/gi),
+    linksCompraEnviados:   count(/📤[^\n]*llabanaenlinea\.com/g),
+    escalacionesEnviadas:  count(/📲 Wig notificado/g),
+    escalacionesEncoladas: count(/📥 \[COLA\] Escalación guardada:/g),
+    escalacionesFallidas:  count(/⚠️ \[COLA\]/g),
+  };
+}
+
+/**
  * Detecta conversaciones problemáticas con ejemplos de logs exactos
  */
 function detectProblematicConversations(logContent) {
@@ -243,7 +287,10 @@ function analyzeQuality(conversations) {
     totalMessages += conv.length;
   });
 
-  stats.avgMessagesPerConversation = (totalMessages / stats.totalConversations).toFixed(1);
+  stats.totalMessages = totalMessages;
+  stats.avgMessagesPerConversation = stats.totalConversations
+    ? (totalMessages / stats.totalConversations).toFixed(1)
+    : '0';
 
   return stats;
 }
@@ -255,6 +302,8 @@ function generateReport(logFile, content, conversations) {
   const bugs = detectBugs(content, conversations);
   const problematicConversations = detectProblematicConversations(content);
   const stats = analyzeQuality(conversations);
+  const errores = detectErrors(content);
+  const funnel = analyzeFunnel(content);
   const date = new Date().toISOString().split('T')[0];
 
   console.log(`\n╔════════════════════════════════════════════════════════╗`);
@@ -264,7 +313,32 @@ function generateReport(logFile, content, conversations) {
   console.log(`📊 ESTADÍSTICAS:`);
   console.log(`   Conversaciones: ${stats.totalConversations}`);
   console.log(`   Promedio mensajes/conversación: ${stats.avgMessagesPerConversation}`);
-  console.log(`   Total mensajes: ${Math.round(stats.totalConversations * stats.avgMessagesPerConversation)}\n`);
+  console.log(`   Total mensajes: ${stats.totalMessages}\n`);
+
+  // ── ERRORES DE RUNTIME (lo más importante: bugs que se escondían) ──────────
+  if (errores.length > 0) {
+    const totalErr = errores.reduce((s, e) => s + e.count, 0);
+    console.log(`🚨 ERRORES DE RUNTIME: ${totalErr} en total (${errores.length} tipos)\n`);
+    errores.slice(0, 15).forEach((e, i) => {
+      console.log(`   ${i + 1}. (${e.count}×) ${e.sample}`);
+    });
+    if (errores.length > 15) console.log(`   … y ${errores.length - 15} tipos más`);
+    console.log(``);
+  } else {
+    console.log(`✅ Sin errores de runtime ([err]) en el log\n`);
+  }
+
+  // ── EMBUDO Y ESCALACIONES ──────────────────────────────────────────────────
+  console.log(`📈 EMBUDO Y ESCALACIONES:`);
+  console.log(`   Onboardings nuevos:       ${funnel.onboardingsNuevos}`);
+  console.log(`   CP solicitados:           ${funnel.cpSolicitados}`);
+  console.log(`   Links de compra enviados: ${funnel.linksCompraEnviados}`);
+  console.log(`   Escalaciones a Wig:       ${funnel.escalacionesEnviadas}`);
+  console.log(`   Escalaciones encoladas:   ${funnel.escalacionesEncoladas}`);
+  if (funnel.escalacionesFallidas > 0) {
+    console.log(`   ⚠️ Escalaciones FALLIDAS:  ${funnel.escalacionesFallidas}`);
+  }
+  console.log(``);
 
   if (bugs.length > 0) {
     console.log(`🐛 BUGS DETECTADOS:\n`);
@@ -301,10 +375,15 @@ function generateReport(logFile, content, conversations) {
 
   // Recomendaciones
   console.log(`🎯 RECOMENDACIONES:`);
+  if (errores.length > 0) {
+    console.log(`   🚨 Hay errores de runtime — revisar la sección 🚨 (puede haber bugs activos).`);
+  }
   if (bugs.length > 0 || problematicConversations.length > 0) {
     console.log(`   ⏳ Revisar problemas detectados. Detalles arriba.\n`);
-  } else {
+  } else if (errores.length === 0) {
     console.log(`   ✅ Sistema funcionando correctamente.\n`);
+  } else {
+    console.log(``);
   }
 }
 
@@ -405,6 +484,8 @@ module.exports = {
   getLatestLogFile,
   extractConversations,
   detectBugs,
+  detectErrors,
+  analyzeFunnel,
   detectProblematicConversations,
   analyzeQuality,
   generateReport,
