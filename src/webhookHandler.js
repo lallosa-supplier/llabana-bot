@@ -2,6 +2,7 @@ const botLogic    = require('./botLogic');
 const twilioService = require('./twilioService');
 const { updateTranscript, getExistingTranscript } = require('./transcriptService');
 const sessionManager = require('./sessionManager');
+const sheetsService = require('./sheetsService');
 const { handleWigCommand, isWigCommand } = require('./wigAdminHandler');
 
 /**
@@ -97,7 +98,15 @@ async function procesarMensaje(from, body) {
     console.log(`📤 [${from}]: ${reply.substring(0, 120)}${reply.length > 120 ? '…' : ''}`);
 
     const session = await sessionManager.getSession(from);
-    const nombre = session?.customer?.name || session?.tempData?.name || '';
+    let nombre = session?.customer?.name || session?.tempData?.name || '';
+    if (!nombre) {
+      try {
+        const maestro = await sheetsService.findCustomer(from);
+        if (maestro?.name) nombre = maestro.name;
+      } catch (e) {
+        console.error('No se pudo buscar nombre en maestro para transcript:', e.message);
+      }
+    }
     const telefono = from.replace('whatsapp:', '');
     await updateTranscript(telefono, nombre, log.lines.join('\n'));
   } catch (err) {
