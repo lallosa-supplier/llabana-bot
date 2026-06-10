@@ -2,11 +2,10 @@
  * Backfill de nombres en la pestaña "5 Transcripciones".
  *
  * Rellena la columna B (nombre) de las filas que tienen teléfono (col C)
- * pero nombre vacío, buscando el nombre en el Sheet maestro vía
- * sheetsService.findCustomer.
+ * pero nombre vacío, buscando el nombre en el Sheet maestro (lectura única).
  *
  * Solo escribe la columna B de transcripciones. NO toca el Sheet maestro.
- * Uso (una vez, con .env disponible):  node src/backfill-nombres.js
+ * Uso (una vez, con .env disponible):  node scripts/backfill-nombres.js
  */
 require('dotenv').config();
 const { google } = require('googleapis');
