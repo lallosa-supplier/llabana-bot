@@ -75,23 +75,53 @@ async function toolConsultarZona(cp) {
   return JSON.stringify({ zona: entrega ? 'entrega_directa' : 'paqueteria', estado, ciudad });
 }
 
-async function toolRegistrar(input, phone) {
+async function toolRegistrar(input, phone, session) {
   const nombreCompleto = [input.nombre, input.apellido].filter(Boolean).join(' ').trim();
-  const existing = await sheetsService.findCustomer(phone);
-  if (existing) {
-    const campos = {};
-    if (nombreCompleto) campos.name = nombreCompleto;
-    if (input.cp) campos.cp = input.cp;
-    if (input.segmento) campos.segmento = input.segmento;
-    if (input.notas) campos.notas = input.notas;
-    await sheetsService.updateOrderData(existing.rowIndex, campos);
+
+  const campos = {};
+  if (nombreCompleto) campos.name = nombreCompleto;
+  if (input.cp) campos.cp = input.cp;
+  if (input.segmento) campos.segmento = input.segmento;
+  if (input.notas) campos.notas = input.notas;
+
+  // Guarda los datos del cliente en la sesión y la persiste.
+  // El objeto session en memoria también se actualiza para que las siguientes
+  // llamadas de herramientas dentro del mismo turno vean el rowIndex.
+  async function persistirEnSesion(rowIndex, fallback = {}) {
+    const customer = {
+      ...(session?.customer || {}),
+      ...(nombreCompleto ? { name: nombreCompleto } : (fallback.name ? { name: fallback.name } : {})),
+      ...(input.cp ? { cp: input.cp } : (fallback.cp ? { cp: fallback.cp } : {})),
+      rowIndex,
+    };
+    if (session) session.customer = customer;
+    await sessionManager.updateSession(phone, { customer });
+  }
+
+  // Si la sesión ya conoce la fila, actualizar directo — no depender del
+  // caché de findCustomer (un null cacheado causaba registros duplicados).
+  const rowConocida = session?.customer?.rowIndex;
+  if (rowConocida) {
+    await sheetsService.updateOrderData(rowConocida, campos);
+    sheetsService.invalidateCustomerCache(phone);
+    await persistirEnSesion(rowConocida);
     return 'Cliente actualizado.';
   }
-  await sheetsService.registerCustomer({
+
+  const existing = await sheetsService.findCustomer(phone);
+  if (existing) {
+    await sheetsService.updateOrderData(existing.rowIndex, campos);
+    sheetsService.invalidateCustomerCache(phone);
+    await persistirEnSesion(existing.rowIndex, { name: existing.name, cp: existing.cp });
+    return 'Cliente actualizado.';
+  }
+
+  const rowIndex = await sheetsService.registerCustomer({
     phone, name: nombreCompleto, email: '', state: '', city: '', cp: input.cp || '',
     channel: 'paqueteria', channelDetail: 'Nacional', segmento: input.segmento || 'Lead frío',
     aceWa: 'SI', entryPoint: 'Directo', origen: 'WhatsApp',
   });
+  await persistirEnSesion(rowIndex);
   return 'Cliente registrado.';
 }
 
@@ -105,7 +135,7 @@ async function toolEscalar(input, phone, session) {
 async function ejecutarHerramienta(nombre, input, phone, session) {
   try {
     if (nombre === 'consultar_zona') return await toolConsultarZona(input.cp);
-    if (nombre === 'registrar_o_actualizar_cliente') return await toolRegistrar(input, phone);
+    if (nombre === 'registrar_o_actualizar_cliente') return await toolRegistrar(input, phone, session);
     if (nombre === 'escalar_a_wig') return await toolEscalar(input, phone, session);
     return 'Herramienta desconocida';
   } catch (err) {

@@ -270,12 +270,20 @@ async function findCustomer(phone) {
         return result;
       }
     }
-    // Cachear resultado nulo también (para evitar búsquedas repetidas de números inexistentes)
-    customerCache.set(phoneKey, { data: null, timestamp: Date.now() });
+    // NO cachear resultados null: si el cliente se registra justo después,
+    // un null cacheado haría que la siguiente búsqueda lo registre duplicado.
     return null;
   } catch (err) {
     console.error('sheetsService.findCustomer error:', err.message);
     return null;
+  }
+}
+
+/** Invalida la entrada del caché de findCustomer para un teléfono. */
+function invalidateCustomerCache(phone) {
+  const phoneKey = normalizePhone(phone);
+  if (customerCache.delete(phoneKey)) {
+    console.log(`🗑️  [CACHE] invalidado para ${phoneKey}`);
   }
 }
 
@@ -334,6 +342,10 @@ async function registerCustomer(data) {
   const updatedRange = res.data.updates?.updatedRange || '';
   const match = updatedRange.match(/!A(\d+):/);
   const rowIndex = match ? parseInt(match[1]) : null;
+
+  // Invalidar caché: si había un null cacheado para este teléfono,
+  // la siguiente findCustomer debe ir a Sheets y encontrar la fila nueva.
+  invalidateCustomerCache(data.phone);
 
   console.log(`✅ Cliente registrado: ${data.name} | ${data.phone} | fila ${rowIndex}`);
   return rowIndex;
@@ -851,6 +863,7 @@ module.exports = {
   formatPhoneForStorage,
   lookupCpMX,
   findCustomer,
+  invalidateCustomerCache,
   findCustomerByEmail,
   registerCustomer,
   deleteCustomerRow,
