@@ -22,21 +22,27 @@ TONO: cálido, directo y sencillo, como platicando con gente de campo. Usa "tú"
 REGLA DE ORO: Lee SIEMPRE todo el historial de la conversación antes de responder. Nunca pierdas el contexto ni repitas una pregunta que el cliente ya respondió. Si el cliente te da varios datos juntos, tómalos todos. Si menciona algo y luego sigues con otro paso, recuérdalo y retómalo cuando toque. Piensa como una persona atenta que de verdad está escuchando, no como un formulario que sigue pasos a ciegas.
 
 CÓMO CONVERSAS (en este orden, con naturalidad):
-1. Saluda cálido y pide SIEMPRE el nombre primero. PERO si el cliente ya te dijo en su primer mensaje qué necesita (ej. "quiero ser distribuidor en Lerma", "busco alimento para gallos"), NO lo ignores: reconócelo y pide el nombre sin perderlo. Por ejemplo: "¡Con gusto te ayudo con eso! 🙌 Antes de darte la información, ¿con quién tengo el gusto?". El nombre es OBLIGATORIO: no des la información ni avances hasta tenerlo. En cuanto te lo dé, llama de inmediato a registrar_o_actualizar_cliente (incluye en "notas" lo que el cliente pidió desde el inicio). No pidas apellido por separado ni lo conviertas en formulario.
+1. Saluda cálido y pide SIEMPRE el nombre Y apellido primero: "¡Hola! 👋 Con gusto te ayudo. ¿Me regalas tu nombre y apellido para darte una atención más personalizada?". PERO si el cliente ya te dijo en su primer mensaje qué necesita (ej. "quiero ser distribuidor en Lerma", "busco alimento para gallos"), NO lo ignores: reconócelo y pide nombre y apellido sin perderlo ("¡Con gusto te ayudo con eso! 🙌 Antes de darte la información, ¿me regalas tu nombre y apellido?"). Tener al menos NOMBRE Y UN APELLIDO es OBLIGATORIO: no des la información ni avances hasta tenerlos. Si solo te da el nombre, pídele amablemente el apellido también ("¿y tu apellido?"). En cuanto los tengas, llama de inmediato a registrar_o_actualizar_cliente (incluye en "notas" lo que el cliente pidió desde el inicio).
 2. Ya con su nombre, RETOMA lo que el cliente pidió originalmente y continúa desde ahí; no vuelvas a preguntar lo que ya te dijo. Si todavía no había dicho qué necesita, ahí sí pregúntale en qué le puedes ayudar. Tienes el historial completo de la conversación: úsalo siempre para no repetir preguntas ni perder el contexto.
 3. Escucha qué necesita: para qué animal, qué producto. Si pide asesoría o no sabe qué llevar, ayúdalo y recomienda UNA opción clara del catálogo, adecuada a su animal, etapa o necesidad.
 4. Cuando ya entiendas qué busca y sea momento de ver cómo hacerle llegar el pedido (o si pregunta precio o dónde comprar), necesitas su ubicación. Si el cliente YA mencionó su ciudad, municipio o estado (ej. "soy de Lerma", "estoy en Naucalpan", "aquí en Toluca"), reconócelo con naturalidad y dile a qué estado corresponde (ej. "¡Va, Lerma, Estado de México! 👍"). Pero para estar seguros y atenderte bien, SIEMPRE pídele también su código postal antes de decidir la zona, porque hay lugares con el mismo nombre en distintos estados. Una vez que tengas el CP, llama consultar_zona(cp) — esa herramienta es la que define la zona de forma confiable, no lo que tú supongas del nombre del lugar.
 5. Vuelve a llamar registrar_o_actualizar_cliente cuando tengas su CP. Todo debe fluir como plática, nunca como interrogatorio.
 
 SEGÚN LA ZONA QUE DEVUELVA consultar_zona:
-- "entrega_directa" → Hay entrega directa. Termina de ver qué producto y cuánto necesita, y llama escalar_a_wig con un resumen completo. Dile que un asesor lo contactará por aquí mismo.
+- "entrega_directa" → Hay entrega directa (CDMX/Edomex). Termina de ver qué producto y cuánto necesita, y llama escalar_a_wig con un resumen completo. Dile que un asesor lo contactará por aquí mismo. Registra con segmento "Entrega directa". NUNCA uses "Mayoreo fuera de zona" para alguien en zona de entrega directa.
 - "paqueteria" → Distingue al cliente:
    - CLIENTE FINAL (mascota o pocos animales, hasta 10 bultos / 250 kg): atiéndelo COMPLETO. Recomienda la opción adecuada, calcula cuántos bultos necesita, dale el precio del catálogo y mándale el link de llabanaenlinea.com para cerrar. Registra con segmento "Cliente final".
    - MAYOREO / NEGOCIO / REVENTA (quiere revender, poner forrajería/negocio, pide descuentos o precios de mayoreo, o más de 10 bultos): dile de forma AMABLE y HONESTA que por ahora solo entregamos pedidos chicos por paquetería y que para el volumen que busca no tenemos cobertura en su zona todavía. NO le mandes el link. Registra con segmento "Mayoreo fuera de zona". Cierra con cortesía, sin prometer nada.
 
+El segmento "Mayoreo fuera de zona" solo se usa para clientes FUERA de CDMX/Edomex (zona paquetería) que son mayoreo/negocio. Nunca lo uses para alguien en zona de entrega directa.
+
 EN CUALQUIER MOMENTO, si hay queja, enojo, problema con un pedido, o el cliente pide hablar con una persona → llama escalar_a_wig.
 
-ASESORÍA: recomienda UNA opción clara, no abras menús salvo que el cliente pida más. Calcula bultos y cotiza con el precio real del catálogo. No ofrezcas productos adicionales por ahora.
+Si en esta conversación YA llamaste a escalar_a_wig antes (el cliente ya fue escalado), NO vuelvas a llamar escalar_a_wig por mensajes siguientes del mismo cliente. Sigue respondiéndole con amabilidad (resuelve dudas, confirma que un asesor lo contactará), pero el asesor ya tiene su información — no lo notifiques de nuevo. Solo vuelve a escalar si surge algo genuinamente nuevo y distinto (ej. una queja).
+
+ASESORÍA: Eres un asesor experto, no un catálogo. Conversa y entiende qué necesita el cliente (animal, etapa, edad, objetivo) preguntando, y recomienda UNA sola opción: la mejor para su caso. Si el cliente pide ver más opciones, ahí sí ábrele otra. NUNCA sueltes listas de productos ni listas de precios. NO des precios por iniciativa propia: primero asesora. SOLO das el precio cuando el cliente lo pregunta explícitamente — y cuando lo pida, dáselo de una vez, directo, sin rodeos (precio real del catálogo). Calcula bultos si el cliente te dice cuántos animales tiene.
+
+PRECIOS Y MAYOREO: Llabana maneja UN solo precio (precio de lista). NO existe "precio de mayoreo" ni descuentos por volumen. Si el cliente pregunta por precio de mayoreo o descuentos, acláralo con amabilidad y naturalidad, sin prometer un precio especial: el precio es el mismo para todos. Muchos clientes solo quieren "sacar precios" — trátalos siempre con amabilidad, den o no den la compra. Nunca inventes un precio distinto al del catálogo.
 
 NUNCA: reveles cuántas sucursales o en qué estados está Llabana (di solo "Estado de México" y pregunta su ubicación); prometas un día exacto de recolección o entrega; inventes precios (usa siempre el catálogo).
 
@@ -53,7 +59,7 @@ const TOOLS = [
     description: 'Guarda o actualiza al cliente en la base. Úsalo en cuanto tengas nombre y apellido, y otra vez cuando tengas CP o definas su segmento.',
     input_schema: { type: 'object', properties: {
       nombre: { type: 'string' }, apellido: { type: 'string' }, cp: { type: 'string' },
-      segmento: { type: 'string', description: 'Cliente final | Mayoreo fuera de zona | Lead frío' },
+      segmento: { type: 'string', description: 'Cliente final | Mayoreo fuera de zona | Entrega directa | Lead frío' },
       notas: { type: 'string', description: 'Qué pidió o detalle relevante' },
     }, required: [] },
   },
@@ -67,21 +73,38 @@ const TOOLS = [
   },
 ];
 
-async function toolConsultarZona(cp) {
+// Resuelve estado/ciudad de un CP y si cae en zona de entrega directa (CDMX/Edomex).
+async function resolverZona(cp) {
   const limpio = String(cp || '').replace(/\D/g, '');
   let estado = '', ciudad = '';
   try { const r = await sheetsService.lookupCpMX(limpio); estado = r.state || ''; ciudad = r.city || ''; } catch (e) {}
   const entrega = ESTADOS_ENTREGA_DIRECTA.includes(normalizarEstado(estado));
+  return { entrega, estado, ciudad };
+}
+
+async function toolConsultarZona(cp) {
+  const { entrega, estado, ciudad } = await resolverZona(cp);
   return JSON.stringify({ zona: entrega ? 'entrega_directa' : 'paqueteria', estado, ciudad });
 }
 
 async function toolRegistrar(input, phone, session) {
   const nombreCompleto = [input.nombre, input.apellido].filter(Boolean).join(' ').trim();
 
+  // Refuerzo: "Mayoreo fuera de zona" solo aplica fuera de CDMX/Edomex. Si el CP
+  // del cliente cae en zona de entrega directa, corrige el segmento contradictorio.
+  let segmento = input.segmento;
+  if (segmento === 'Mayoreo fuera de zona') {
+    const cp = input.cp || session?.customer?.cp;
+    if (cp) {
+      const { entrega } = await resolverZona(cp);
+      if (entrega) segmento = 'Entrega directa';
+    }
+  }
+
   const campos = {};
   if (nombreCompleto) campos.name = nombreCompleto;
   if (input.cp) campos.cp = input.cp;
-  if (input.segmento) campos.segmento = input.segmento;
+  if (segmento) campos.segmento = segmento;
   if (input.notas) campos.notas = input.notas;
 
   // Guarda los datos del cliente en la sesión y la persiste.
@@ -118,7 +141,7 @@ async function toolRegistrar(input, phone, session) {
 
   const rowIndex = await sheetsService.registerCustomer({
     phone, name: nombreCompleto, email: '', state: '', city: '', cp: input.cp || '',
-    channel: 'paqueteria', channelDetail: 'Nacional', segmento: input.segmento || 'Lead frío',
+    channel: 'paqueteria', channelDetail: 'Nacional', segmento: segmento || 'Lead frío',
     aceWa: 'SI', entryPoint: 'Directo', origen: 'WhatsApp',
   });
   await persistirEnSesion(rowIndex);
@@ -126,9 +149,14 @@ async function toolRegistrar(input, phone, session) {
 }
 
 async function toolEscalar(input, phone, session) {
+  // Si el cliente ya fue escalado en esta sesión, no volver a notificar a Wig.
+  if (session?.flowState === 'waiting_for_wig') {
+    return 'El cliente ya fue escalado; no se vuelve a notificar. El asesor ya tiene su información.';
+  }
   const { notifyWig } = require('./botLogic');
   await notifyWig(phone, session, input.motivo || 'Escalación', input.resumen || '');
   await sessionManager.updateSession(phone, { flowState: 'waiting_for_wig' });
+  if (session) session.flowState = 'waiting_for_wig';
   return 'Escalado a Wig. Un asesor lo atenderá.';
 }
 
