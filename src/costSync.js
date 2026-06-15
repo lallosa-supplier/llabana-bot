@@ -193,32 +193,34 @@ async function upsertMonth(ym, { railway, twilioUsd, claudeUsd }) {
 
 async function syncAll(monthsBack = 6) {
   const ranges = monthRanges(monthsBack);
-  const summary = [];
+  const hasAdmin = !!process.env.ANTHROPIC_ADMIN_KEY;
 
-  for (const m of ranges) {
+  // Meses en paralelo: cada upsertMonth actualiza su propia fila (rango distinto),
+  // así el endpoint responde rápido y no choca con el timeout del proxy (502).
+  const summary = await Promise.all(ranges.map(async (m) => {
     try {
       const startDate = m.startISO.slice(0, 10);
       // Último día del mes = día anterior al primer día del mes siguiente.
       const endDate = new Date(m.end.getTime() - 86400000).toISOString().slice(0, 10);
 
-      let twilioUsd = null, claudeUsd = null;
-
+      let twilioUsd = null, twilioStatus = 'ok';
       try { twilioUsd = await fetchTwilioMonth(startDate, endDate); }
-      catch (e) { console.error(`Twilio ${m.ym} error: ${e.message}`); }
+      catch (e) { twilioStatus = `error: ${e.message}`; console.error(`Twilio ${m.ym} error: ${e.message}`); }
 
+      let claudeUsd = null, claudeStatus = hasAdmin ? 'ok' : 'no-admin-key';
       try { claudeUsd = await fetchAnthropicMonth(m.startISO, m.endISO); }
-      catch (e) { console.error(`Anthropic ${m.ym} error: ${e.message}`); }
+      catch (e) { claudeStatus = `error: ${e.message}`; console.error(`Anthropic ${m.ym} error: ${e.message}`); }
 
       const res = await upsertMonth(m.ym, {
         railway: RATES.railwayMonthly, twilioUsd, claudeUsd,
       });
-      console.log(`✅ sync ${m.ym}: Railway $${res.railway} | Twilio $${twilioUsd ?? '(prev)'} | Claude $${claudeUsd ?? '(prev)'} | Total $${res.total}`);
-      summary.push(res);
+      console.log(`✅ sync ${m.ym}: Railway $${res.railway} | Twilio $${twilioUsd ?? '(prev)'} [${twilioStatus}] | Claude $${claudeUsd ?? '(prev)'} [${claudeStatus}] | Total $${res.total}`);
+      return { ...res, twilioStatus, claudeStatus };
     } catch (e) {
       console.error(`sync ${m.ym} error: ${e.message}`);
-      summary.push({ ym: m.ym, error: e.message });
+      return { ym: m.ym, error: e.message };
     }
-  }
+  }));
 
   return summary;
 }
