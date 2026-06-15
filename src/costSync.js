@@ -159,9 +159,17 @@ async function fetchAnthropicMonth(startISO, endISO) {
     if (page) params.set('page', page);
     const url = `https://api.anthropic.com/v1/organizations/cost_report?${params.toString()}`;
 
-    const res = await fetch(url, {
-      headers: { 'anthropic-version': '2023-06-01', 'x-api-key': key },
-    });
+    // El cost_report tiene un rate limit bajo; reintentar en 429 con backoff
+    // (respeta Retry-After si viene). Necesario sobre todo al correr varios meses.
+    const hdrs = { 'anthropic-version': '2023-06-01', 'x-api-key': key };
+    let res;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      res = await fetch(url, { headers: hdrs });
+      if (res.status !== 429) break;
+      const ra = parseInt(res.headers.get('retry-after') || '', 10);
+      const waitMs = Number.isFinite(ra) ? ra * 1000 : 3000 * Math.pow(2, attempt); // 3,6,12,24s
+      if (attempt < 4) await new Promise(r => setTimeout(r, Math.min(waitMs, 20000)));
+    }
     statuses.push(res.status);
     if (!res.ok) {
       const text = await res.text().catch(() => '');
