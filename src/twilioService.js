@@ -18,6 +18,7 @@ async function sendMessage(to, body) {
     to,
     body,
   });
+  try { require('./costTracker').recordTwilioMessage(1); } catch (e) {}
   return msg;
 }
 

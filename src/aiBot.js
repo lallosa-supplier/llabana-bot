@@ -2,6 +2,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const sessionManager  = require('./sessionManager');
 const sheetsService   = require('./sheetsService');
 const knowledgeService = require('./knowledgeService');
+const costTracker      = require('./costTracker');
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -233,6 +234,7 @@ async function handleMessageIA(phone, messageBody) {
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6', max_tokens: 1024, system, tools: TOOLS, messages,
     });
+    costTracker.recordClaudeUsage(response.usage?.input_tokens, response.usage?.output_tokens);
     const textos = response.content.filter(b => b.type === 'text').map(b => b.text);
     if (textos.length) finalText = textos.join('\n').trim();
 

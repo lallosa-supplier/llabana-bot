@@ -27,6 +27,7 @@ const { invalidateCache } = require('./knowledgeService');
 const { runFollowUps }   = require('./followUpService');
 const colaEscalaciones   = require('./colaEscalaciones');
 const { getRedisClient } = require('./sessionManager');
+const costTracker        = require('./costTracker');
 
 const app = express();
 // Railway corre detrás de un proxy: confiar en X-Forwarded-For (necesario para rate-limit)
@@ -99,6 +100,16 @@ app.get('/api/transcripts', async (req, res) => {
   }
 });
 
+app.get('/api/costs', async (req, res) => {
+  try {
+    const data = await costTracker.getCosts();
+    res.json(data);
+  } catch (err) {
+    console.error('[API] Error costs:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const WA_LINKS = {
   'web-footer':      'Hola, quiero mas informacion',
   'web-header':      'Hola, me podrian dar mas informacion',
@@ -137,6 +148,9 @@ app.listen(PORT, () => {
   // Pasar cliente Redis a la cola de escalaciones
   colaEscalaciones.setRedis(getRedisClient());
   console.log('📥 Cola de escalaciones fuera de horario activa');
+
+  // Seguimiento de costos — vuelca a "8 Costos" cada 3 min
+  costTracker.start();
 
   // Cron de seguimientos — corre cada 15 minutos (idempotent)
   let isFollowupRunning = false;
