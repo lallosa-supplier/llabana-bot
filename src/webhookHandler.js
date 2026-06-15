@@ -142,24 +142,31 @@ async function webhookHandler(req, res) {
   }
 
   const from = req.body?.From;
-  const body = (req.body?.Body || '').trim();
+  let body = (req.body?.Body || '').trim();
 
   if (!from) {
     console.log('Webhook recibido sin From:', JSON.stringify(req.body));
     return;
   }
 
+  // Media sin texto (imagen/audio/pdf): no procesamos el contenido del archivo
+  // todavía, pero enrutamos al cerebro IA con un texto sintético para que
+  // responda con naturalidad (mismo pipeline que el texto normal).
+  const numMedia = parseInt(req.body?.NumMedia || '0', 10);
+  const hasMedia = numMedia > 0 || !!req.body?.MediaContentType0;
   if (!body) {
-    // Mensaje sin texto: imagen, audio, video, sticker, etc.
-    const mediaType = req.body?.MediaContentType0 || 'archivo';
-    console.log(`📎 Mensaje multimedia de ${from}: ${mediaType}`);
-    try {
-      const replyMedia = await botLogic.handleMediaMessage(from, req.body?.MediaContentType0 || '');
-      await twilioService.sendMessage(from, replyMedia);
-    } catch (err) {
-      console.error(`❌ Error procesando multimedia de ${from}:`, err.message);
+    if (hasMedia) {
+      const mediaType = req.body?.MediaContentType0 || '';
+      const tipo = /audio|voice/i.test(mediaType) ? 'audio'
+                 : /pdf|document/i.test(mediaType) ? 'archivo'
+                 : 'imagen';
+      body = `[El cliente envió un ${tipo} sin texto]`;
+      console.log(`📎 Media sin texto de ${from}: ${mediaType || 'desconocido'} → cerebro IA`);
+    } else {
+      // Mensaje totalmente vacío (sin texto ni media): ignorar.
+      console.log(`Webhook sin texto ni media de ${from}`);
+      return;
     }
-    return;
   }
 
   console.log(`📨 [${from}]: ${body}`);
