@@ -32,9 +32,11 @@ index.js                (160) — exports: app
       POST /webhook/whatsapp          → webhookHandler (con rate limiter)
       GET  /health                    → estado + commit SHA
       GET  /api/transcripts           → getTranscripts() (alimenta el dashboard)
-      GET  /dashboard                 → static public/
+      GET  /api/costs                 → costTracker.getCosts() (dashboard de costos)
+      GET  /dashboard                 → static public/ (index.html + costos.html)
       GET  /wa/:origen                → links de WhatsApp por origen
       POST /admin/refresh-kb          → invalida caché de knowledgeService
+    Al arrancar también llama costTracker.start() (vuelca costos cada 3 min).
 
 webhookHandler.js       (199) — exports: webhookHandler (función)
     Recibe el webhook de Twilio. Deduplica por MessageSid, debounce 1.5s,
@@ -43,6 +45,8 @@ webhookHandler.js       (199) — exports: webhookHandler (función)
     escribe la transcripción. Para el nombre del transcript usa
     session.customer.name / tempData.name y, si vienen vacíos, cae a
     sheetsService.findCustomer(from) (fix anti "Sin nombre" en dashboard).
+    Cuenta el mensaje ENTRANTE para costos con costTracker.recordTwilioMessage(1)
+    (tras pasar dedup y validación de From/Body).
 
 botLogic.js             (387) — exports: { handleMessage, handleMediaMessage, notifyWig }
     Capa delgada sobre el cerebro IA.
@@ -52,8 +56,9 @@ botLogic.js             (387) — exports: { handleMessage, handleMediaMessage, 
         por Twilio; si está fuera de horario o el envío falla, encola en
         colaEscalaciones; marca 🚨🚨🚨 si es urgente.
 
-aiBot.js                (190) — exports: { handleMessageIA }
-    EL CEREBRO IA (ver sección 4). MASTER_PROMPT + 3 herramientas + loop de
+aiBot.js                — exports: { handleMessageIA }
+    EL CEREBRO IA (ver sección 4). Tras cada llamada a Claude registra el uso de
+    tokens con costTracker.recordClaudeUsage(in, out). MASTER_PROMPT + 3 herramientas + loop de
     tool calling con Claude (claude-sonnet-4-6).
 
 sessionManager.js       (181) — exports: { getSession, createSession, updateSession,
@@ -81,8 +86,22 @@ knowledgeService.js     (201) — exports: { getKnowledgeBase, getProductosPorEs
                                 getAllProductos, invalidateCache }
     Catálogo (pestaña 7) y base de conocimiento desde Sheets, con caché 5 min.
 
-twilioService.js        (24)  — exports: { sendMessage }
-    Envío de mensajes de WhatsApp por Twilio.
+twilioService.js        — exports: { sendMessage }
+    Envío de mensajes de WhatsApp por Twilio. Cuenta cada envío para costos con
+    costTracker.recordTwilioMessage(1).
+
+costTracker.js          — exports: { recordClaudeUsage, recordTwilioMessage,
+                                getCosts, flush, start }
+    Seguimiento automático de costos. Acumula en memoria, por mes, los tokens de
+    Claude (in/out) y los mensajes de Twilio (entrantes + salientes); cada 3 min
+    vuelca los acumulados a la pestaña "8 Costos" de Sheets (se crea sola con sus
+    encabezados la primera vez). getCosts() alimenta GET /api/costs (suma lo
+    pendiente en memoria para estar al día). Tarifas configurables por env vars:
+    RAILWAY_MONTHLY_USD, SHEETS_MONTHLY_USD, TWILIO_NUMBER_USD, TWILIO_PER_MSG_USD,
+    CLAUDE_INPUT_PER_M, CLAUDE_OUTPUT_PER_M.
+    Hooks: recordClaudeUsage en aiBot.js (tras cada llamada a Claude);
+    recordTwilioMessage en twilioService.js (envíos) y en webhookHandler.js
+    (mensajes entrantes del cliente). start() se llama desde index.js al arrancar.
 
 transcriptService.js    (138) — exports: { saveTranscript, getTranscripts,
                                 updateTranscript, getExistingTranscript }
@@ -220,6 +239,10 @@ Pestañas usadas por el código:
                         lee el nombre de la col B. Truncado a 48k chars.
   6 FAQs / Conocimiento — knowledgeService (getKnowledgeBase).
   7 Productos         — getAllProductos / getProductosPorEspecie (catálogo, caché 5m).
+  8 Costos            — costTracker. Se crea sola la primera vez. Columnas A-J:
+                        Mes (YYYY-MM), Railway USD, Twilio msgs, Twilio USD,
+                        Claude tok in, Claude tok out, Claude USD, Otros USD,
+                        Total USD, Actualizado. Una fila por mes.
 
 --------------------------------------------------------------------------------
 7. VARIABLES DE ENTORNO (process.env.* encontradas en src/)
@@ -231,6 +254,9 @@ Google Sheets GOOGLE_SHEETS_ID, GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_SERVICE_ACCO
 Shopify       SHOPIFY_WEBHOOK_SECRET, SHOPIFY_CLIENT_ID, SHOPIFY_CLIENT_SECRET,
               SHOPIFY_STORE_URL
 Redis         REDIS_URL, REDIS_HOST, REDIS_PORT, REDIS_DB
+Costos        RAILWAY_MONTHLY_USD, SHEETS_MONTHLY_USD, TWILIO_NUMBER_USD,
+              TWILIO_PER_MSG_USD, CLAUDE_INPUT_PER_M, CLAUDE_OUTPUT_PER_M
+              (todas opcionales, con valores por defecto en costTracker.js)
 Sistema       NODE_ENV, PORT, DEBUG, LOG_LEVEL, RAILWAY_GIT_COMMIT_SHA
 
 Requeridas al arranque (index.js aborta si faltan): ANTHROPIC_API_KEY,
