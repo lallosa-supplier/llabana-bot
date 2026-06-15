@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Costos del Bot · Llabana</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --verde:#4ca832; --verde-d:#3c8a28; --naranja:#f0883e;
+  --bg:#eef1f4; --card:#fff; --text:#1f2733; --muted:#6c757d; --line:#e7ebef;
+  --gap:16px; --radius:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;}
+.wrap{max-width:1080px;margin:0 auto;padding:var(--gap);}
+
+.header{background:linear-gradient(120deg,#1f2733,#243042);color:#fff;border-radius:var(--radius);padding:22px 26px;margin-bottom:var(--gap);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;}
+.brand{display:flex;align-items:center;gap:14px;}
+.mark{width:42px;height:42px;border-radius:10px;background:radial-gradient(circle at 50% 38%,var(--naranja) 0 38%,transparent 39%),linear-gradient(180deg,var(--verde),var(--verde-d));box-shadow:0 2px 8px rgba(0,0,0,.25);flex:0 0 auto;}
+.brand h1{font-size:19px;font-weight:700;}
+.brand .sub{font-size:12px;color:rgba(255,255,255,.6);}
+.ctrl{display:flex;flex-direction:column;gap:3px;}
+.ctrl label{font-size:11px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.5px;}
+.ctrl input.fx{width:84px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:6px;padding:8px 9px;font-size:13px;}
+
+.banner{border-radius:var(--radius);padding:12px 18px;margin-bottom:var(--gap);font-size:13px;display:none;}
+.banner.demo{display:block;background:#fff8f1;border:1px solid #f6d9bf;color:#7a4f24;}
+.banner.live{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#eef7ea;border:1px solid #cfe7c2;color:#2e6b1e;}
+.banner b{font-weight:700;}
+.refresh{border:1px solid #cfe7c2;background:#fff;color:#2e6b1e;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;}
+code{background:#f0e3d3;padding:1px 6px;border-radius:5px;font-size:12px;}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--gap);margin-bottom:var(--gap);}
+.kpi{background:var(--card);border-radius:var(--radius);padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-left:4px solid var(--verde);}
+.kpi.k2{border-left-color:var(--naranja);} .kpi.k3{border-left-color:#4C72B0;} .kpi.k4{border-left-color:#8a93a0;}
+.kpi .lab{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.kpi .val{font-size:28px;font-weight:800;letter-spacing:-.5px;}
+.kpi .note{font-size:12px;color:var(--muted);margin-top:4px;}
+.kpi .up{color:#dc3545;} .kpi .down{color:#28a745;}
+
+.card{background:var(--card);border-radius:var(--radius);padding:20px 22px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:var(--gap);}
+.card h3{font-size:14px;font-weight:700;}
+.card .hint{font-size:12px;color:var(--muted);margin:2px 0 14px;}
+.chart-box{position:relative;height:260px;}
+
+.tscroll{overflow-x:auto;}
+.tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.tbl th{text-align:right;padding:10px 12px;border-bottom:2px solid var(--line);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
+.tbl th.l{text-align:left;}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.tbl td.l{text-align:left;font-weight:600;}
+.tbl td.total,.tbl th.tcol{font-weight:800;}
+.tbl td.l,.tbl th.l{position:sticky;left:0;background:#fff;z-index:2;}
+.tbl tfoot td{border-top:2px solid var(--text);font-weight:800;padding-top:11px;background:#fff;}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle;}
+.sub2{font-size:11px;color:var(--muted);font-weight:400;}
+.empty{text-align:center;color:var(--muted);padding:34px 10px;font-size:14px;}
+.btns{display:flex;gap:8px;}
+.btn{border:1px solid var(--line);background:#fff;color:var(--text);border-radius:8px;padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer;}
+.btn:hover{background:#f6f8fa;}
+.bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px;}
+.foot{text-align:center;color:var(--muted);font-size:12px;padding:8px 0;}
+@media(max-width:760px){.tbl{font-size:12px;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="brand">
+      <div class="mark"></div>
+      <div>
+        <h1>Costos del Bot de WhatsApp</h1>
+        <div class="sub">Comercializadora Llabana — gasto mensual en MXN (automático)</div>
+      </div>
+    </div>
+    <div class="ctrl">
+      <label>Tipo de cambio (USD→MXN)</label>
+      <input class="fx" id="fx" type="number" step="0.1" value="18" oninput="renderAll()">
+    </div>
+  </div>
+
+  <div class="banner demo" id="banner-demo">
+    <b>Datos de ejemplo.</b> Este dashboard se llena solo cuando lo hosteas junto a tu bot (lee de <code>/api/costs</code>).
+    Aquí en vista previa no hay conexión, así que muestro cifras de muestra.
+  </div>
+  <div class="banner live" id="banner-live">
+    <span><b>Conectado.</b> Datos en vivo desde tu bot · actualizado <span id="upd">—</span></span>
+    <button class="refresh" onclick="load()">↻ Actualizar</button>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="lab">Gasto este mes</div><div class="val" id="k-now">$0</div><div class="note" id="k-now-note">—</div></div>
+    <div class="kpi k2"><div class="lab">Mes anterior</div><div class="val" id="k-prev">$0</div><div class="note" id="k-prev-note">—</div></div>
+    <div class="kpi k3"><div class="lab">Variación vs anterior</div><div class="val" id="k-var">—</div><div class="note">cambio mensual</div></div>
+    <div class="kpi k4"><div class="lab">Acumulado registrado</div><div class="val" id="k-acc">$0</div><div class="note" id="k-acc-note">0 meses</div></div>
+  </div>
+
+  <div class="card">
+    <div class="bar">
+      <div>
+        <h3>Detalle por servicio y mes</h3>
+        <div class="hint">Se llena solo: tokens de Claude y mensajes de Twilio en tiempo real; Railway y Sheets fijos.</div>
+      </div>
+      <div class="btns"><button class="btn" onclick="exportJson()">⤓ Exportar</button></div>
+    </div>
+    <div id="tablewrap"></div>
+  </div>
+
+  <div class="card">
+    <h3>Gasto total por mes</h3>
+    <div class="hint">Historial de gasto del bot, mes a mes (MXN).</div>
+    <div class="chart-box"><canvas id="chart"></canvas></div>
+  </div>
+
+  <div class="foot">Cifras en MXN, convertidas desde USD al tipo de cambio indicado. Tarifas base (USD): Claude Sonnet 4.6 $3/$15 por millón · Twilio $0.005/mensaje + número · Railway plan base.</div>
+</div>
+
+<script>
+const SERVICES = [
+  {key:'railway', name:'Railway',       color:'#4ca832'},
+  {key:'twilio',  name:'Twilio',        color:'#4C72B0'},
+  {key:'claude',  name:'Claude API',    color:'#f0883e'},
+  {key:'sheets',  name:'Google Sheets', color:'#8a93a0'},
+  {key:'otros',   name:'Otros',         color:'#b08968'},
+];
+const MNAMES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+// Datos de ejemplo (en USD, como llegan del bot) para la vista previa
+const DEMO=[
+  {ym:'2026-04',railway:5,twilio:9.2,claude:7.8,sheets:0,otros:0,twilioMsgs:1610,claudeIn:1900000,claudeOut:130000},
+  {ym:'2026-05',railway:5,twilio:11.6,claude:10.4,sheets:0,otros:0,twilioMsgs:2090,claudeIn:2550000,claudeOut:175000},
+  {ym:'2026-06',railway:5,twilio:13.1,claude:11.9,sheets:0,otros:0,twilioMsgs:2390,claudeIn:2900000,claudeOut:200000},
+];
+
+let DATA=[], connected=false, chart;
+
+function fx(){ return parseFloat(document.getElementById('fx').value)||1; }
+function totalOf(o){ return SERVICES.reduce((a,s)=>a+(+o[s.key]||0),0); }   // USD
+function mx(usd){ return usd*fx(); }
+function fmt(usd){ return '$'+mx(usd).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }       // MXN
+function fmtUsd(usd){ return '$'+usd.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2})+' USD'; }  // referencia
+function label(ym){ const [y,m]=ym.split('-'); return `${MNAMES[+m-1]} ${y}`; }
+
+async function load(){
+  try{
+    const res=await fetch('/api/costs',{cache:'no-store'});
+    if(!res.ok) throw new Error('no');
+    const json=await res.json();
+    DATA=Array.isArray(json)?json:[];
+    connected=true;
+    document.getElementById('upd').textContent=new Date().toLocaleString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    connected=false;
+    DATA=DEMO;
+  }
+  document.getElementById('banner-demo').style.display=connected?'none':'block';
+  document.getElementById('banner-live').style.display=connected?'flex':'none';
+  renderAll();
+}
+
+function renderAll(){ renderKpis(); renderTable(); updateChart(); }
+
+function renderKpis(){
+  const d=[...DATA].sort((a,b)=>a.ym<b.ym?-1:1);
+  const now=d[d.length-1], prev=d[d.length-2];
+  const nowT=now?totalOf(now):0, prevT=prev?totalOf(prev):0;
+  document.getElementById('k-now').textContent=fmt(nowT);
+  document.getElementById('k-now-note').textContent=now?`${label(now.ym)} · ≈ ${fmtUsd(nowT)}`:'—';
+  document.getElementById('k-prev').textContent=fmt(prevT);
+  document.getElementById('k-prev-note').textContent=prev?label(prev.ym):'—';
+  const vEl=document.getElementById('k-var');
+  if(prev&&prevT>0){ const p=(nowT-prevT)/prevT*100,up=p>=0; vEl.innerHTML=`<span class="${up?'up':'down'}">${up?'▲':'▼'} ${Math.abs(p).toFixed(1)}%</span>`; }
+  else vEl.textContent='—';
+  const acc=d.reduce((a,m)=>a+totalOf(m),0);
+  document.getElementById('k-acc').textContent=fmt(acc);
+  document.getElementById('k-acc-note').textContent=`${d.length} mes${d.length===1?'':'es'} · ≈ ${fmtUsd(acc)}`;
+}
+
+function renderTable(){
+  const d=[...DATA].sort((a,b)=>a.ym<b.ym?-1:1);
+  const wrap=document.getElementById('tablewrap');
+  if(!d.length){ wrap.innerHTML='<div class="empty">Aún no hay datos. En cuanto el bot reciba mensajes, aparecerán aquí.</div>'; return; }
+
+  let h='<div class="tscroll"><table class="tbl"><thead><tr><th class="l">Servicio</th>';
+  d.forEach(m=>h+=`<th>${label(m.ym)}</th>`);
+  h+='<th class="tcol">Total</th></tr></thead><tbody>';
+
+  SERVICES.forEach(s=>{
+    h+=`<tr><td class="l"><span class="dot" style="background:${s.color}"></span>${s.name}</td>`;
+    let rowTotal=0;
+    d.forEach(m=>{
+      const v=+m[s.key]||0; rowTotal+=v;
+      let sub='';
+      if(s.key==='twilio' && m.twilioMsgs!=null) sub=`<br><span class="sub2">${(+m.twilioMsgs).toLocaleString('es-MX')} msj</span>`;
+      if(s.key==='claude' && m.claudeIn!=null)  sub=`<br><span class="sub2">${((+m.claudeIn+ +(m.claudeOut||0))/1000).toFixed(0)}k tok</span>`;
+      h+=`<td>${fmt(v)}${sub}</td>`;
+    });
+    h+=`<td class="total">${fmt(rowTotal)}</td></tr>`;
+  });
+
+  h+='</tbody><tfoot><tr><td class="l">Total</td>';
+  d.forEach(m=>h+=`<td class="total">${fmt(totalOf(m))}</td>`);
+  const grand=d.reduce((a,m)=>a+totalOf(m),0);
+  h+=`<td class="total">${fmt(grand)}<br><span class="sub2">≈ ${fmtUsd(grand)}</span></td>`;
+  h+='</tr></tfoot></table></div>';
+  wrap.innerHTML=h;
+}
+
+function updateChart(){
+  const d=[...DATA].sort((a,b)=>a.ym<b.ym?-1:1);
+  const labels=d.map(m=>label(m.ym));
+  const data=d.map(m=>mx(totalOf(m)));
+  if(!chart){
+    chart=new Chart(document.getElementById('chart'),{
+      type:'bar',
+      data:{labels,datasets:[{label:'Total',data,backgroundColor:'rgba(76,168,50,.85)',borderColor:'#3c8a28',borderWidth:1,borderRadius:6,maxBarThickness:54}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' $'+c.parsed.y.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2})+' MXN'}}},
+        scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{callback:v=>'$'+v.toLocaleString('es-MX')}}}}
+    });
+  } else { chart.data.labels=labels; chart.data.datasets[0].data=data; chart.update('none'); }
+}
+
+function exportJson(){
+  const blob=new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='costos_bot_llabana.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+load();
+setInterval(()=>{ if(connected) load(); }, 60000);
+</script>
+</body>
+</html>
