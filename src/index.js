@@ -134,6 +134,19 @@ app.get('/api/costs/sync', requireDashboardToken, async (req, res) => {
   }
 });
 
+// Diagnóstico: desglose de costo de Claude por API key para un mes (usage_report).
+app.get('/api/costs/keys', requireDashboardToken, async (req, res) => {
+  try {
+    const ym = /^\d{4}-\d{2}$/.test(req.query.month || '') ? req.query.month : null;
+    if (!ym) return res.status(400).json({ error: 'pasa ?month=YYYY-MM' });
+    const data = await costSync.diagKeys(ym);
+    res.json(data);
+  } catch (err) {
+    console.error('[API] Error costs/keys:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const WA_LINKS = {
   'web-footer':      'Hola, quiero mas informacion',
   'web-header':      'Hola, me podrian dar mas informacion',

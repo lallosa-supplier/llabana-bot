@@ -218,6 +218,131 @@ async function fetchAnthropicMonth(startISO, endISO) {
   return { usd, debug };
 }
 
+// ── Diagnóstico por API KEY (usage_report/messages) ───────────────────────────
+// El cost_report NO filtra por api_key (solo workspace/description). El
+// usage_report/messages SÍ agrupa por api_key_id y da tokens por tipo. Calculamos
+// el costo por key multiplicando por tarifas. Sirve para aislar el costo del bot
+// ("Chatbot La Llosa 2") del de otras keys en el mismo workspace Default.
+
+// Tarifas por 1M de tokens (USD) por modelo. Cache: lectura 0.1x del input,
+// escritura 5m 1.25x, escritura 1h 2x. (Sonnet 4.6: in 3 / out 15.)
+const MODEL_RATES = {
+  'claude-sonnet-4-6': { in: 3, out: 15 },
+  'claude-sonnet-4-5': { in: 3, out: 15 },
+  'claude-opus-4-8':   { in: 5, out: 25 },
+  'claude-opus-4-7':   { in: 5, out: 25 },
+  'claude-opus-4-6':   { in: 5, out: 25 },
+  'claude-opus-4-5':   { in: 5, out: 25 },
+  'claude-haiku-4-5':  { in: 1, out: 5 },
+  'claude-fable-5':    { in: 10, out: 50 },
+};
+function rateFor(model) {
+  if (model) for (const k of Object.keys(MODEL_RATES)) if (model.includes(k)) return MODEL_RATES[k];
+  return { in: 3, out: 15 }; // default Sonnet
+}
+function extractTokens(r) {
+  const cc = r.cache_creation || {};
+  return {
+    uncached_input: +r.uncached_input_tokens || 0,
+    cache_write_5m: +(r.cache_creation_input_tokens != null ? r.cache_creation_input_tokens : (cc.ephemeral_5m_input_tokens || 0)) || 0,
+    cache_write_1h: +(cc.ephemeral_1h_input_tokens || 0) || 0,
+    cache_read:     +r.cache_read_input_tokens || 0,
+    output:         +r.output_tokens || 0,
+  };
+}
+function usdFromTokens(model, t) {
+  const r = rateFor(model), M = 1e6;
+  return (t.uncached_input * r.in
+        + t.cache_write_5m * r.in * 1.25
+        + t.cache_write_1h * r.in * 2
+        + t.cache_read     * r.in * 0.1
+        + t.output         * r.out) / M;
+}
+
+async function adminFetch(url) {
+  const key = process.env.ANTHROPIC_ADMIN_KEY;
+  if (!key) throw new Error('ANTHROPIC_ADMIN_KEY no configurada');
+  const hdrs = { 'anthropic-version': '2023-06-01', 'x-api-key': key };
+  let res;
+  for (let a = 0; a < 5; a++) {
+    res = await fetch(url, { headers: hdrs });
+    if (res.status !== 429) break;
+    const ra = parseInt(res.headers.get('retry-after') || '', 10);
+    if (a < 4) await new Promise(r => setTimeout(r, Math.min(Number.isFinite(ra) ? ra * 1000 : 3000 * 2 ** a, 20000)));
+  }
+  return res;
+}
+
+async function fetchApiKeys() {
+  const out = {};
+  let page = null, guard = 0;
+  do {
+    const p = new URLSearchParams({ limit: '100' });
+    if (page) p.set('page', page);
+    const res = await adminFetch(`https://api.anthropic.com/v1/organizations/api_keys?${p}`);
+    if (!res.ok) throw new Error(`api_keys HTTP ${res.status}`);
+    const j = await res.json();
+    for (const k of (j.data || [])) out[k.id] = k.name;
+    page = j.has_more ? j.next_page : null;
+  } while (page && ++guard < 20);
+  return out;
+}
+
+async function fetchUsageByKey(startISO, endISO) {
+  const byKeyModel = {};
+  const statuses = [];
+  let page = null, pages = 0, buckets = 0, results = 0;
+  do {
+    const p = new URLSearchParams({ starting_at: startISO, ending_at: endISO, bucket_width: '1d', limit: '31' });
+    p.append('group_by[]', 'api_key_id');
+    p.append('group_by[]', 'model');
+    if (page) p.set('page', page);
+    const res = await adminFetch(`https://api.anthropic.com/v1/organizations/usage_report/messages?${p}`);
+    statuses.push(res.status);
+    if (!res.ok) { const t = await res.text().catch(() => ''); throw new Error(`usage_report HTTP ${res.status} ${t.slice(0, 200)}`); }
+    const j = await res.json();
+    pages++;
+    for (const b of (j.data || [])) {
+      buckets++;
+      for (const r of (b.results || [])) {
+        results++;
+        const kid = r.api_key_id || 'sin-key';
+        const model = r.model || 'sin-model';
+        const mk = `${kid}||${model}`;
+        const t = extractTokens(r);
+        const acc = byKeyModel[mk] || (byKeyModel[mk] = { uncached_input: 0, cache_write_5m: 0, cache_write_1h: 0, cache_read: 0, output: 0 });
+        for (const f of Object.keys(t)) acc[f] += t[f];
+      }
+    }
+    page = j.has_more ? j.next_page : null;
+  } while (page && pages < 100);
+  return { byKeyModel, meta: { statuses, pages, buckets, results } };
+}
+
+async function diagKeys(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const startISO = new Date(Date.UTC(y, m - 1, 1)).toISOString();
+  const endISO   = new Date(Date.UTC(y, m, 1)).toISOString();
+
+  let names = {}, namesError = null;
+  try { names = await fetchApiKeys(); } catch (e) { namesError = e.message; }
+
+  const { byKeyModel, meta } = await fetchUsageByKey(startISO, endISO);
+
+  const perKey = {};
+  for (const [mk, t] of Object.entries(byKeyModel)) {
+    const [kid, model] = mk.split('||');
+    const usd = usdFromTokens(model, t);
+    if (!perKey[kid]) perKey[kid] = { api_key_id: kid, name: names[kid] || '(desconocido)', usd: 0, models: {}, tokens: { uncached_input: 0, cache_write_5m: 0, cache_write_1h: 0, cache_read: 0, output: 0 } };
+    perKey[kid].usd += usd;
+    perKey[kid].models[model] = +((perKey[kid].models[model] || 0) + usd).toFixed(4);
+    for (const f of Object.keys(t)) perKey[kid].tokens[f] += t[f];
+  }
+  const keys = Object.values(perKey).map(k => ({ ...k, usd: +k.usd.toFixed(2) })).sort((a, b) => b.usd - a.usd);
+  const totalUsd = +keys.reduce((s, k) => s + k.usd, 0).toFixed(2);
+  return { ym, rango: `${startISO} → ${endISO}`, totalUsd, botKeyId: process.env.BOT_API_KEY_ID || null, namesError, meta, keys };
+}
+
 // ── Escritura a "8 Costos" ────────────────────────────────────────────────────
 
 /**
@@ -344,4 +469,7 @@ module.exports = {
   upsertMonth,
   syncAll,
   start,
+  fetchApiKeys,
+  fetchUsageByKey,
+  diagKeys,
 };
