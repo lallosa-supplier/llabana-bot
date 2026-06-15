@@ -51,6 +51,12 @@ function monthRanges(monthsBack = 6) {
   return out;
 }
 
+/** ym ('YYYY-MM') del mes inmediatamente anterior. Maneja el cambio de año. */
+function prevMonthYm(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7);
+}
+
 function syncStamp() {
   return 'sync ' + new Date()
     .toLocaleString('sv-SE', { timeZone: 'America/Mexico_City' })
@@ -494,6 +500,13 @@ async function syncAll(monthsBack = 6, opts = {}) {
   const ranges = monthRanges(monthsBack);
   const currentYm = ranges[ranges.length - 1].ym; // último = mes en curso
 
+  // Ventana móvil de 2 meses: mes en curso + mes anterior. El usage_report de
+  // Anthropic trae ~1 día de retraso, así que el mes recién cerrado debe seguir
+  // refrescándose unos días para captar sus últimos días y quedar completo.
+  // Como Claude se mide filtrado por BOT_API_KEY_ID (solo el bot), re-sincronizar
+  // el mes anterior es seguro y no re-infla nada.
+  const ventana = new Set([currentYm, prevMonthYm(currentYm)]);
+
   // Meses en paralelo: cada escritura toca su propia fila (rango distinto).
   const summary = await Promise.all(ranges.map(async (m) => {
     try {
@@ -504,13 +517,13 @@ async function syncAll(monthsBack = 6, opts = {}) {
         return { ...res, twilioStatus: 'fijo', claudeStatus: 'fijo' };
       }
 
-      // 2) Solo el mes en curso (y futuros) se sincroniza. Meses PASADOS no-fijos
-      //    no se re-sobrescriben.
-      if (m.ym < currentYm) {
-        return { ym: m.ym, skipped: 'pasado-no-fijo' };
+      // 2) Solo los meses dentro de la ventana (en curso + anterior) se sincronizan.
+      //    Meses más viejos que la ventana (y no fijos) no se re-sobrescriben.
+      if (!ventana.has(m.ym)) {
+        return { ym: m.ym, skipped: 'fuera-de-ventana' };
       }
 
-      // 3) Mes en curso: Twilio real + Claude SOLO del bot (usage_report por key).
+      // 3) Mes en ventana: Twilio real + Claude SOLO del bot (usage_report por key).
       const startDate = m.startISO.slice(0, 10);
       const endDate = new Date(m.end.getTime() - 86400000).toISOString().slice(0, 10);
 
