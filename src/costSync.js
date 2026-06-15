@@ -49,16 +49,20 @@ function syncStamp() {
 
 // ── Twilio: costo real del mes ────────────────────────────────────────────────
 
-async function fetchTwilioMonth(startDate, endDate) {
+async function fetchTwilioMonth(startDate, endDate, debug = false) {
   const sid   = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   if (!sid || !token) {
     console.warn('⚠️  Twilio: faltan credenciales — se omite');
-    return null;
+    return { usd: null, debug: null };
   }
   const auth = 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64');
   const base = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Usage/Records.json`;
 
+  const recDebug = (r) => ({
+    category: r.category, price: r.price, price_unit: r.price_unit,
+    start_date: r.start_date, end_date: r.end_date, description: r.description,
+  });
   const sumPrices = (records) => {
     let total = 0;
     for (const rec of (records || [])) {
@@ -70,25 +74,50 @@ async function fetchTwilioMonth(startDate, endDate) {
     return total;
   };
 
-  // 404 = periodo sin cuenta (la cuenta no existía antes de marzo 2026). Es
-  // esperado: ese mes simplemente no tuvo gasto → $0 limpio, sin error.
-  // 1) Category=totalprice (agregado del periodo)
+  // 404 = periodo sin cuenta (la cuenta no existía antes de marzo 2026) → $0 limpio.
+  // El "Total monthly spend" de la factura corresponde a Category=totalprice.
+  let usd = 0, path = 'totalprice', records = [];
   const url1 = `${base}?Category=totalprice&StartDate=${startDate}&EndDate=${endDate}`;
   const r1 = await fetch(url1, { headers: { Authorization: auth } });
-  if (r1.status === 404) return 0;
+  if (r1.status === 404) return { usd: 0, debug: debug ? { range: `${startDate}→${endDate}`, status: 404, note: 'sin cuenta' } : null };
   if (!r1.ok) throw new Error(`Twilio totalprice HTTP ${r1.status}`);
   const j1 = await r1.json();
   if ((j1.usage_records || []).length) {
-    return sumPrices(j1.usage_records);
+    records = j1.usage_records;
+    usd = sumPrices(records);
+  } else {
+    // Fallback: todos los records sin Category, sumar price
+    path = 'fallback';
+    const url2 = `${base}?StartDate=${startDate}&EndDate=${endDate}`;
+    const r2 = await fetch(url2, { headers: { Authorization: auth } });
+    if (r2.status === 404) return { usd: 0, debug: debug ? { range: `${startDate}→${endDate}`, status: 404, note: 'sin cuenta' } : null };
+    if (!r2.ok) throw new Error(`Twilio fallback HTTP ${r2.status}`);
+    const j2 = await r2.json();
+    records = j2.usage_records || [];
+    usd = sumPrices(records);
   }
 
-  // 2) Fallback: todos los records sin Category, sumar price
-  const url2 = `${base}?StartDate=${startDate}&EndDate=${endDate}`;
-  const r2 = await fetch(url2, { headers: { Authorization: auth } });
-  if (r2.status === 404) return 0;
-  if (!r2.ok) throw new Error(`Twilio fallback HTTP ${r2.status}`);
-  const j2 = await r2.json();
-  return sumPrices(j2.usage_records);
+  let dbg = null;
+  if (debug) {
+    dbg = {
+      range: `${startDate} → ${endDate}`,
+      path,
+      sumadosUsd: +usd.toFixed(4),
+      summedRecords: records.map(recDebug),
+    };
+    // Desglose por categoría del mes (para ver qué compone el total)
+    try {
+      const rb = await fetch(`${base}?StartDate=${startDate}&EndDate=${endDate}`, { headers: { Authorization: auth } });
+      if (rb.ok) {
+        const jb = await rb.json();
+        dbg.breakdown = (jb.usage_records || [])
+          .filter(r => parseFloat(r.price))
+          .map(r => ({ category: r.category, price: r.price, description: r.description }));
+      }
+    } catch (e) { dbg.breakdownError = e.message; }
+  }
+
+  return { usd, debug: dbg };
 }
 
 // ── Anthropic: costo real del mes ─────────────────────────────────────────────
@@ -141,18 +170,20 @@ async function fetchAnthropicMonth(startISO, endISO) {
   } while (page && pages < MAX_PAGES);
 
   // La doc indica que los montos vienen en la unidad mínima (centavos): USD = suma/100.
-  const usd = rawTotal / 100;
+  // Divisor configurable por si Anthropic cambiara el formato (default 100).
+  const divisor = parseFloat(process.env.ANTHROPIC_COST_DIVISOR) || 100;
+  const usd = rawTotal / divisor;
   const debug = {
     rango: `${startISO} → ${endISO}`,
     statuses, pages, buckets, results,
-    rawTotal, usd: +usd.toFixed(4),
+    rawTotal, divisor, usd: +usd.toFixed(4),
     byWorkspaceUsd: Object.fromEntries(
-      Object.entries(byWorkspace).map(([k, v]) => [k, +(v / 100).toFixed(2)])
+      Object.entries(byWorkspace).map(([k, v]) => [k, +(v / divisor).toFixed(2)])
     ),
   };
   console.log(`💵 Anthropic ${startISO.slice(0, 10)}→${endISO.slice(0, 10)}: pages=${pages} buckets=${buckets} results=${results} crudo=${rawTotal} → $${usd.toFixed(2)} USD`);
   Object.entries(byWorkspace).forEach(([ws, amt]) => {
-    console.log(`   workspace ${ws}: crudo=${amt} → $${(amt / 100).toFixed(2)} USD`);
+    console.log(`   workspace ${ws}: crudo=${amt} → $${(amt / divisor).toFixed(2)} USD`);
   });
   return { usd, debug };
 }
@@ -219,7 +250,8 @@ async function upsertMonth(ym, { railway, twilioUsd, claudeUsd }) {
 
 // ── Orquestación ──────────────────────────────────────────────────────────────
 
-async function syncAll(monthsBack = 6) {
+async function syncAll(monthsBack = 6, opts = {}) {
+  const debug = !!opts.debug;
   const ranges = monthRanges(monthsBack);
   const hasAdmin = !!process.env.ANTHROPIC_ADMIN_KEY;
 
@@ -231,8 +263,11 @@ async function syncAll(monthsBack = 6) {
       // Último día del mes = día anterior al primer día del mes siguiente.
       const endDate = new Date(m.end.getTime() - 86400000).toISOString().slice(0, 10);
 
-      let twilioUsd = null, twilioStatus = 'ok';
-      try { twilioUsd = await fetchTwilioMonth(startDate, endDate); }
+      let twilioUsd = null, twilioStatus = 'ok', twilioDebug = null;
+      try {
+        const tw = await fetchTwilioMonth(startDate, endDate, debug);
+        twilioUsd = tw.usd; twilioDebug = tw.debug;
+      }
       catch (e) { twilioStatus = `error: ${e.message}`; console.error(`Twilio ${m.ym} error: ${e.message}`); }
 
       let claudeUsd = null, claudeStatus = hasAdmin ? 'ok' : 'no-admin-key', claudeDebug = null;
@@ -246,7 +281,9 @@ async function syncAll(monthsBack = 6) {
         railway: RATES.railwayMonthly, twilioUsd, claudeUsd,
       });
       console.log(`✅ sync ${m.ym}: Railway $${res.railway} | Twilio $${twilioUsd ?? '(prev)'} [${twilioStatus}] | Claude $${claudeUsd ?? '(prev)'} [${claudeStatus}] | Total $${res.total}`);
-      return { ...res, twilioStatus, claudeStatus, claudeDebug };
+      const out = { ...res, twilioStatus, claudeStatus };
+      if (debug) { out.twilioDebug = twilioDebug; out.claudeDebug = claudeDebug; }
+      return out;
     } catch (e) {
       console.error(`sync ${m.ym} error: ${e.message}`);
       return { ym: m.ym, error: e.message };

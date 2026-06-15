@@ -126,7 +126,7 @@ app.get('/api/costs/sync', requireDashboardToken, async (req, res) => {
   try {
     const m = parseInt(req.query.months, 10);
     const months = Number.isFinite(m) && m >= 0 ? m : undefined;
-    const summary = await costSync.syncAll(months);
+    const summary = await costSync.syncAll(months, { debug: req.query.debug === '1' });
     res.json({ ok: true, months: summary });
   } catch (err) {
     console.error('[API] Error costs/sync:', err.message);
