@@ -75,7 +75,10 @@ async function fetchTwilioMonth(startDate, endDate, debug = false) {
   };
 
   // 404 = periodo sin cuenta (la cuenta no existía antes de marzo 2026) → $0 limpio.
-  // El "Total monthly spend" de la factura corresponde a Category=totalprice.
+  // Sumamos el totalprice COMPLETO (incluye la renta del número, phonenumbers-local
+  // ~$1.15). NOTA: el "Total monthly spend" de Usage Statements NO incluye esa renta,
+  // por eso marzo se ve más alto que esa cifra; totalprice es el gasto real completo
+  // y es lo correcto (abril/mayo cuadran con él). No excluir ninguna categoría.
   let usd = 0, path = 'totalprice', records = [];
   const url1 = `${base}?Category=totalprice&StartDate=${startDate}&EndDate=${endDate}`;
   const r1 = await fetch(url1, { headers: { Authorization: auth } });
@@ -138,6 +141,8 @@ async function fetchAnthropicMonth(startISO, endISO) {
 
   let rawTotal = 0;
   const byWorkspace = {};
+  const byDescription = {};
+  const byWsDesc = {};
   const statuses = [];
   let pages = 0, buckets = 0, results = 0;
   let page = null;
@@ -145,9 +150,12 @@ async function fetchAnthropicMonth(startISO, endISO) {
 
   // Pagina mientras has_more: cost_report devuelve buckets diarios y los parte en
   // páginas; leer solo la primera dejaba el mes corto (junio salía ~$19 vs ~$73).
+  // group_by workspace_id + description para diagnosticar si hay más de una fuente
+  // de costo (ej. la key del bot y otra key de desarrollo en el mismo workspace).
   do {
     const params = new URLSearchParams({ starting_at: startISO, ending_at: endISO });
     params.append('group_by[]', 'workspace_id');
+    params.append('group_by[]', 'description');
     if (page) params.set('page', page);
     const url = `https://api.anthropic.com/v1/organizations/cost_report?${params.toString()}`;
 
@@ -168,8 +176,12 @@ async function fetchAnthropicMonth(startISO, endISO) {
         results++;
         const amt = parseFloat(result.amount) || 0;
         rawTotal += amt;
-        const ws = result.workspace_id || 'sin-workspace';
+        const ws   = result.workspace_id || 'sin-workspace';
+        const desc = result.description || 'sin-descripcion';
         byWorkspace[ws] = (byWorkspace[ws] || 0) + amt;
+        byDescription[desc] = (byDescription[desc] || 0) + amt;
+        const k = `${ws} | ${desc}`;
+        byWsDesc[k] = (byWsDesc[k] || 0) + amt;
       }
     }
 
@@ -180,13 +192,16 @@ async function fetchAnthropicMonth(startISO, endISO) {
   // Divisor configurable por si Anthropic cambiara el formato (default 100).
   const divisor = parseFloat(process.env.ANTHROPIC_COST_DIVISOR) || 100;
   const usd = rawTotal / divisor;
+  const toUsd = (m) => Object.fromEntries(
+    Object.entries(m).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, +(v / divisor).toFixed(2)])
+  );
   const debug = {
     rango: `${startISO} → ${endISO}`,
     statuses, pages, buckets, results,
     rawTotal, divisor, usd: +usd.toFixed(4),
-    byWorkspaceUsd: Object.fromEntries(
-      Object.entries(byWorkspace).map(([k, v]) => [k, +(v / divisor).toFixed(2)])
-    ),
+    byWorkspaceUsd: toUsd(byWorkspace),
+    byDescriptionUsd: toUsd(byDescription),
+    byWorkspaceDescUsd: toUsd(byWsDesc),
   };
   console.log(`💵 Anthropic ${startISO.slice(0, 10)}→${endISO.slice(0, 10)}: pages=${pages} buckets=${buckets} results=${results} crudo=${rawTotal} → $${usd.toFixed(2)} USD`);
   Object.entries(byWorkspace).forEach(([ws, amt]) => {
