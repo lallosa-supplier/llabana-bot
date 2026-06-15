@@ -33,11 +33,15 @@ index.js                (160) — exports: app
       GET  /health                    → estado + commit SHA
       GET  /api/transcripts           → getTranscripts() (alimenta el dashboard)
       GET  /api/costs                 → costTracker.getCosts() (USD reales; protegido*)
-      GET  /api/costs/sync            → costSync.syncAll() a demanda (?months=N; protegido*)
-      GET  /dashboard                 → static public/ (index.html + costos.html)
+      GET  /api/costs/sync            → costSync.syncAll() a demanda (?months=N, ?debug=1; protegido*)
+      GET  /api/costs/keys            → costSync.diagKeys(?month=YYYY-MM) — auditar
+                                        costo de Claude por API key (protegido*)
+      GET  /dashboard                 → static public/ (index.html + costos.html → /dashboard/costos.html)
       GET  /wa/:origen                → links de WhatsApp por origen
       POST /admin/refresh-kb          → invalida caché de knowledgeService
-    Al arrancar llama costSync.start() (sync de costos reales ~30s tras boot y cada 6h).
+    Al arrancar llama costSync.start() (sync de costos reales ~30s tras boot — salvo
+    COST_SYNC_ON_BOOT=false — y cada 6h).
+    (Nota: el sync NO acepta ?force=1; sus parámetros son ?months=N y ?debug=1.)
     * /api/costs y /api/costs/sync usan requireDashboardToken: si DASHBOARD_TOKEN
       está configurada, exigen el token por header x-dashboard-token o ?token=;
       si no está configurada, no se exige (no rompe el dashboard).
@@ -107,20 +111,46 @@ costTracker.js          — exports: { recordClaudeUsage, recordTwilioMessage,
     CLAUDE_OUTPUT_PER_M.
 
 costSync.js             — exports: { monthRanges, fetchTwilioMonth,
-                                fetchAnthropicMonth, upsertMonth, syncAll, start }
-    Sincroniza costos REALES facturados (no estimados) a "8 Costos". Fuente de la
-    verdad del dinero. Por mes (UTC, monthsBack=6 por defecto):
+                                fetchAnthropicMonth, upsertMonth, syncAll, start,
+                                fetchApiKeys, fetchUsageByKey, diagKeys }
+    Sincroniza costos REALES (no estimados) a "8 Costos". Fuente de la verdad del
+    dinero. syncAll clasifica cada mes en 3 casos:
+
+    1) MESES_FIJOS (meses cerrados y validados a mano): se escriben tal cual, sin
+       llamar a ninguna API, con "Actualizado" = "fijo (validado)". Son intocables.
+       Valores actuales (USD):
+         2026-03 → railway 5, twilio 1.42,  claude 0
+         2026-04 → railway 5, twilio 19.46, claude 9.29
+         2026-05 → railway 5, twilio 20.35, claude 66.95   (costo REAL del bot)
+       total fijo = railway + twilio + claude + otros.
+
+    2) VENTANA MÓVIL de 2 meses (mes en curso + mes anterior, si NO son fijos): se
+       sincronizan con datos reales. El mes recién cerrado se sigue refrescando
+       unos días porque el usage_report de Anthropic trae ~1 día de retraso; se
+       estabiliza solo y luego sale de la ventana.
+
+    3) Meses más viejos que la ventana y no fijos: NO se tocan (skip).
+
+    Fuentes de datos para los meses de la ventana:
       - Twilio: Usage/Records (Category=totalprice, abs del price; fallback sin
-        categoría). HTTP 404 = periodo sin cuenta → $0 limpio (esperado).
-      - Anthropic: organizations/cost_report (suma de amounts /100 = USD; centavos
-        → dólares), group_by workspace_id con log por workspace. Requiere
-        ANTHROPIC_ADMIN_KEY (admin key, distinta de ANTHROPIC_API_KEY); si falta,
-        omite Claude y conserva el valor previo de la fila.
+        categoría). Incluye la renta del número (phonenumbers-local). HTTP 404 =
+        periodo sin cuenta → $0 limpio (esperado).
+      - Claude: SOLO el bot. usage_report/messages filtrado por BOT_API_KEY_ID
+        (la key "Chatbot La Llosa 2"), agrupado por modelo; los tokens por tipo se
+        multiplican por tarifas (Sonnet 4.6: in $3 / out $15 por M; cache read
+        0.1x, cache write 5m 1.25x / 1h 2x). NO usa cost_report, que sumaba las 3
+        keys del workspace Default (bot + Admin + Claude Code) e inflaba el dato.
+        Requiere ANTHROPIC_ADMIN_KEY (admin key, distinta de ANTHROPIC_API_KEY) y
+        BOT_API_KEY_ID; si falta alguna, conserva el valor previo de la fila.
       - Railway: RAILWAY_MONTHLY_USD fijo.
+
+    fetchAnthropicMonth (cost_report del workspace, /ANTHROPIC_COST_DIVISOR, default
+    100) queda disponible para auditoría pero ya NO alimenta el sync. diagKeys +
+    fetchApiKeys + fetchUsageByKey sirven a GET /api/costs/keys (desglose por key).
     upsertMonth conserva conteos (C/E/F) y Otros (H) si la fila existía. syncAll
     corre los meses en paralelo (evita el 502 del proxy) y devuelve un resumen con
-    twilioStatus/claudeStatus por mes. start() (llamado desde index.js) corre el
-    primer sync ~30s tras el boot y luego cada 6h.
+    twilioStatus/claudeStatus por mes. start() (desde index.js) corre el primer
+    sync ~30s tras el boot salvo COST_SYNC_ON_BOOT=false, y luego cada 6h.
 
 transcriptService.js    (138) — exports: { saveTranscript, getTranscripts,
                                 updateTranscript, getExistingTranscript }
@@ -258,32 +288,40 @@ Pestañas usadas por el código:
                         lee el nombre de la col B. Truncado a 48k chars.
   6 FAQs / Conocimiento — knowledgeService (getKnowledgeBase).
   7 Productos         — getAllProductos / getProductosPorEspecie (catálogo, caché 5m).
-  8 Costos            — costSync (USD reales facturados) + costTracker. Se crea
-                        sola la primera vez. Columnas A-J: Mes (YYYY-MM),
-                        Railway USD, Twilio msgs, Twilio USD, Claude tok in,
-                        Claude tok out, Claude USD, Otros USD, Total USD,
-                        Actualizado. Una fila por mes. Los USD (D/G/I) los escribe
-                        costSync con datos facturados de Twilio/Anthropic, NO
-                        estimaciones.
+  8 Costos            — FUENTE DE LA VERDAD del dinero. La escribe costSync; la lee
+                        costTracker.getCosts() para el dashboard. Se crea sola la
+                        primera vez. Columnas A-J: Mes (YYYY-MM), Railway USD,
+                        Twilio msgs, Twilio USD, Claude tok in, Claude tok out,
+                        Claude USD, Otros USD, Total USD, Actualizado. Una fila por
+                        mes. Los USD (D/G/I) son reales facturados/validados (no
+                        estimaciones): meses fijos = valores validados a mano
+                        ("Actualizado" = "fijo (validado)"); meses de la ventana =
+                        Twilio totalprice + Claude del bot por BOT_API_KEY_ID.
 
 --------------------------------------------------------------------------------
 7. VARIABLES DE ENTORNO (process.env.* encontradas en src/)
 --------------------------------------------------------------------------------
 IA            ANTHROPIC_API_KEY (bot → Claude),
-              ANTHROPIC_ADMIN_KEY (admin key para el cost_report real; sin ella el
-              sync omite Claude)
+              ANTHROPIC_ADMIN_KEY (admin key del Usage/Cost API; sin ella el sync
+              omite Claude),
+              BOT_API_KEY_ID (id de la key del bot "Chatbot La Llosa 2"; el sync
+              mide el Claude del mes vivo SOLO de esta key vía usage_report)
 Twilio        TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER,
               WIG_WHATSAPP_NUMBER
 Google Sheets GOOGLE_SHEETS_ID, GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_SERVICE_ACCOUNT_BASE
 Shopify       SHOPIFY_WEBHOOK_SECRET, SHOPIFY_CLIENT_ID, SHOPIFY_CLIENT_SECRET,
               SHOPIFY_STORE_URL
 Redis         REDIS_URL, REDIS_HOST, REDIS_PORT, REDIS_DB
-Costos        RAILWAY_MONTHLY_USD, SHEETS_MONTHLY_USD, TWILIO_NUMBER_USD,
-              TWILIO_PER_MSG_USD, CLAUDE_INPUT_PER_M, CLAUDE_OUTPUT_PER_M
-              (todas opcionales, con valores por defecto en costTracker.js;
-              las tarifas estimadas ya casi no se usan: costSync trae USD reales)
-Dashboard     DASHBOARD_TOKEN (opcional; si se define, /api/costs y /api/costs/sync
-              exigen ese token por header x-dashboard-token o ?token=)
+Costos        RAILWAY_MONTHLY_USD (default 5), SHEETS_MONTHLY_USD (default 0),
+              TWILIO_NUMBER_USD, TWILIO_PER_MSG_USD, CLAUDE_INPUT_PER_M,
+              CLAUDE_OUTPUT_PER_M (tarifas estimadas de costTracker, ya casi sin uso
+              porque costSync trae USD reales);
+              ANTHROPIC_COST_DIVISOR (default 100; divisor centavos→USD del
+              cost_report, solo para auditoría/fetchAnthropicMonth);
+              COST_SYNC_ON_BOOT (default true; si "false", start() no corre el sync
+              ~30s tras el boot, solo deja el intervalo de 6h)
+Dashboard     DASHBOARD_TOKEN (opcional; si se define, /api/costs, /api/costs/sync y
+              /api/costs/keys exigen ese token por header x-dashboard-token o ?token=)
 Sistema       NODE_ENV, PORT, DEBUG, LOG_LEVEL, RAILWAY_GIT_COMMIT_SHA
 
 Requeridas al arranque (index.js aborta si faltan): ANTHROPIC_API_KEY,
