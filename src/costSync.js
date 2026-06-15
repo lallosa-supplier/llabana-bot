@@ -70,9 +70,12 @@ async function fetchTwilioMonth(startDate, endDate) {
     return total;
   };
 
+  // 404 = periodo sin cuenta (la cuenta no existía antes de marzo 2026). Es
+  // esperado: ese mes simplemente no tuvo gasto → $0 limpio, sin error.
   // 1) Category=totalprice (agregado del periodo)
   const url1 = `${base}?Category=totalprice&StartDate=${startDate}&EndDate=${endDate}`;
   const r1 = await fetch(url1, { headers: { Authorization: auth } });
+  if (r1.status === 404) return 0;
   if (!r1.ok) throw new Error(`Twilio totalprice HTTP ${r1.status}`);
   const j1 = await r1.json();
   if ((j1.usage_records || []).length) {
@@ -82,6 +85,7 @@ async function fetchTwilioMonth(startDate, endDate) {
   // 2) Fallback: todos los records sin Category, sumar price
   const url2 = `${base}?StartDate=${startDate}&EndDate=${endDate}`;
   const r2 = await fetch(url2, { headers: { Authorization: auth } });
+  if (r2.status === 404) return 0;
   if (!r2.ok) throw new Error(`Twilio fallback HTTP ${r2.status}`);
   const j2 = await r2.json();
   return sumPrices(j2.usage_records);

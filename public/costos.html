@@ -146,9 +146,14 @@ function fmt(usd){ return '$'+mx(usd).toLocaleString('es-MX',{minimumFractionDig
 function fmtUsd(usd){ return '$'+usd.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2})+' USD'; }  // referencia
 function label(ym){ const [y,m]=ym.split('-'); return `${MNAMES[+m-1]} ${y}`; }
 
+// Token para los endpoints protegidos: se toma de la URL (?token=XXX) y se
+// reenvía al fetch como header. Abre la página como /dashboard/costos.html?token=XXX
+const DASH_TOKEN = new URLSearchParams(location.search).get('token') || '';
+
 async function load(){
   try{
-    const res=await fetch('/api/costs',{cache:'no-store'});
+    const headers = DASH_TOKEN ? {'x-dashboard-token': DASH_TOKEN} : {};
+    const res=await fetch('/api/costs',{cache:'no-store', headers});
     if(!res.ok) throw new Error('no');
     const json=await res.json();
     DATA=Array.isArray(json)?json:[];

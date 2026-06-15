@@ -101,7 +101,18 @@ app.get('/api/transcripts', async (req, res) => {
   }
 });
 
-app.get('/api/costs', async (req, res) => {
+// Token simple para proteger los endpoints de costos. Se acepta por header
+// x-dashboard-token o por query ?token=. Si DASHBOARD_TOKEN no está configurada,
+// NO se exige (para no romper el dashboard antes de definirla).
+function requireDashboardToken(req, res, next) {
+  const expected = process.env.DASHBOARD_TOKEN;
+  if (!expected) return next();
+  const got = req.get('x-dashboard-token') || req.query.token;
+  if (got === expected) return next();
+  return res.status(401).json({ error: 'no autorizado' });
+}
+
+app.get('/api/costs', requireDashboardToken, async (req, res) => {
   try {
     const data = await costTracker.getCosts();
     res.json(data);
@@ -111,7 +122,7 @@ app.get('/api/costs', async (req, res) => {
   }
 });
 
-app.get('/api/costs/sync', async (req, res) => {
+app.get('/api/costs/sync', requireDashboardToken, async (req, res) => {
   try {
     const m = parseInt(req.query.months, 10);
     const months = Number.isFinite(m) && m >= 0 ? m : undefined;
