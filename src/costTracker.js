@@ -224,6 +224,12 @@ async function getCosts() {
         claudeOut:  +r[5] || 0,    // F (sublínea)
       };
     })
+    // Ocultar meses sin actividad real (solo el fijo de Railway, sin consumo de
+    // Twilio/Claude ni conteos): así la tabla arranca en el primer mes con gasto.
+    .filter(o =>
+      o.twilio > 0 || o.claude > 0 || o.otros > 0 ||
+      o.twilioMsgs > 0 || o.claudeIn > 0 || o.claudeOut > 0
+    )
     .sort((a, b) => (a.ym < b.ym ? -1 : a.ym > b.ym ? 1 : 0));
 }
 

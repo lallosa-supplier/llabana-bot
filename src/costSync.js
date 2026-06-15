@@ -100,37 +100,61 @@ async function fetchAnthropicMonth(startISO, endISO) {
     return null;
   }
 
-  const params = new URLSearchParams({ starting_at: startISO, ending_at: endISO });
-  params.append('group_by[]', 'workspace_id');
-  const url = `https://api.anthropic.com/v1/organizations/cost_report?${params.toString()}`;
-
-  const res = await fetch(url, {
-    headers: { 'anthropic-version': '2023-06-01', 'x-api-key': key },
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Anthropic HTTP ${res.status} ${text.slice(0, 200)}`);
-  }
-  const json = await res.json();
-
   let rawTotal = 0;
   const byWorkspace = {};
-  for (const bucket of (json.data || [])) {
-    for (const result of (bucket.results || [])) {
-      const amt = parseFloat(result.amount) || 0;
-      rawTotal += amt;
-      const ws = result.workspace_id || 'sin-workspace';
-      byWorkspace[ws] = (byWorkspace[ws] || 0) + amt;
+  const statuses = [];
+  let pages = 0, buckets = 0, results = 0;
+  let page = null;
+  const MAX_PAGES = 100; // tope de seguridad anti-loop
+
+  // Pagina mientras has_more: cost_report devuelve buckets diarios y los parte en
+  // páginas; leer solo la primera dejaba el mes corto (junio salía ~$19 vs ~$73).
+  do {
+    const params = new URLSearchParams({ starting_at: startISO, ending_at: endISO });
+    params.append('group_by[]', 'workspace_id');
+    if (page) params.set('page', page);
+    const url = `https://api.anthropic.com/v1/organizations/cost_report?${params.toString()}`;
+
+    const res = await fetch(url, {
+      headers: { 'anthropic-version': '2023-06-01', 'x-api-key': key },
+    });
+    statuses.push(res.status);
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Anthropic HTTP ${res.status} ${text.slice(0, 200)}`);
     }
-  }
+    const json = await res.json();
+    pages++;
+
+    for (const bucket of (json.data || [])) {
+      buckets++;
+      for (const result of (bucket.results || [])) {
+        results++;
+        const amt = parseFloat(result.amount) || 0;
+        rawTotal += amt;
+        const ws = result.workspace_id || 'sin-workspace';
+        byWorkspace[ws] = (byWorkspace[ws] || 0) + amt;
+      }
+    }
+
+    page = json.has_more ? json.next_page : null;
+  } while (page && pages < MAX_PAGES);
 
   // La doc indica que los montos vienen en la unidad mínima (centavos): USD = suma/100.
   const usd = rawTotal / 100;
-  console.log(`💵 Anthropic ${startISO.slice(0, 10)} → ${endISO.slice(0, 10)}: crudo=${rawTotal} → $${usd.toFixed(2)} USD`);
+  const debug = {
+    rango: `${startISO} → ${endISO}`,
+    statuses, pages, buckets, results,
+    rawTotal, usd: +usd.toFixed(4),
+    byWorkspaceUsd: Object.fromEntries(
+      Object.entries(byWorkspace).map(([k, v]) => [k, +(v / 100).toFixed(2)])
+    ),
+  };
+  console.log(`💵 Anthropic ${startISO.slice(0, 10)}→${endISO.slice(0, 10)}: pages=${pages} buckets=${buckets} results=${results} crudo=${rawTotal} → $${usd.toFixed(2)} USD`);
   Object.entries(byWorkspace).forEach(([ws, amt]) => {
     console.log(`   workspace ${ws}: crudo=${amt} → $${(amt / 100).toFixed(2)} USD`);
   });
-  return usd;
+  return { usd, debug };
 }
 
 // ── Escritura a "8 Costos" ────────────────────────────────────────────────────
@@ -211,15 +235,18 @@ async function syncAll(monthsBack = 6) {
       try { twilioUsd = await fetchTwilioMonth(startDate, endDate); }
       catch (e) { twilioStatus = `error: ${e.message}`; console.error(`Twilio ${m.ym} error: ${e.message}`); }
 
-      let claudeUsd = null, claudeStatus = hasAdmin ? 'ok' : 'no-admin-key';
-      try { claudeUsd = await fetchAnthropicMonth(m.startISO, m.endISO); }
+      let claudeUsd = null, claudeStatus = hasAdmin ? 'ok' : 'no-admin-key', claudeDebug = null;
+      try {
+        const cr = await fetchAnthropicMonth(m.startISO, m.endISO);
+        if (cr) { claudeUsd = cr.usd; claudeDebug = cr.debug; }
+      }
       catch (e) { claudeStatus = `error: ${e.message}`; console.error(`Anthropic ${m.ym} error: ${e.message}`); }
 
       const res = await upsertMonth(m.ym, {
         railway: RATES.railwayMonthly, twilioUsd, claudeUsd,
       });
       console.log(`✅ sync ${m.ym}: Railway $${res.railway} | Twilio $${twilioUsd ?? '(prev)'} [${twilioStatus}] | Claude $${claudeUsd ?? '(prev)'} [${claudeStatus}] | Total $${res.total}`);
-      return { ...res, twilioStatus, claudeStatus };
+      return { ...res, twilioStatus, claudeStatus, claudeDebug };
     } catch (e) {
       console.error(`sync ${m.ym} error: ${e.message}`);
       return { ym: m.ym, error: e.message };
