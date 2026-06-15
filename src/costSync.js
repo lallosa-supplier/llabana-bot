@@ -105,15 +105,22 @@ async function fetchTwilioMonth(startDate, endDate, debug = false) {
       sumadosUsd: +usd.toFixed(4),
       summedRecords: records.map(recDebug),
     };
-    // Desglose por categoría del mes (para ver qué compone el total)
+    // Desglose por categoría del mes (paginado, para ver TODO lo que compone el total)
     try {
-      const rb = await fetch(`${base}?StartDate=${startDate}&EndDate=${endDate}`, { headers: { Authorization: auth } });
-      if (rb.ok) {
+      const breakdown = [];
+      let next = `/2010-04-01/Accounts/${sid}/Usage/Records.json?StartDate=${startDate}&EndDate=${endDate}&PageSize=1000`;
+      let guard = 0;
+      while (next && guard < 10) {
+        const rb = await fetch(`https://api.twilio.com${next}`, { headers: { Authorization: auth } });
+        if (!rb.ok) break;
         const jb = await rb.json();
-        dbg.breakdown = (jb.usage_records || [])
-          .filter(r => parseFloat(r.price))
-          .map(r => ({ category: r.category, price: r.price, description: r.description }));
+        for (const r of (jb.usage_records || [])) {
+          if (parseFloat(r.price)) breakdown.push({ category: r.category, price: r.price, description: r.description });
+        }
+        next = jb.next_page_uri || null;
+        guard++;
       }
+      dbg.breakdown = breakdown;
     } catch (e) { dbg.breakdownError = e.message; }
   }
 
