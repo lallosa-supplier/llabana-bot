@@ -16,6 +16,16 @@ const {
   getSheets, ensureSheet, readRows, RATES, SHEET, SPREADSHEET_ID,
 } = require('./costTracker');
 
+// ── Meses cerrados y validados (FUENTE DE LA VERDAD) ──────────────────────────
+// Valores reales en USD ya cotejados contra la consola de Anthropic (costo del
+// bot, key "Chatbot La Llosa 2") y las facturas de Twilio. El sync NO toca estos
+// meses: escribe estos valores y marca "fijo (validado)". No llama a las APIs.
+const MESES_FIJOS = {
+  '2026-03': { railway: 5, twilio: 1.42,  claude: 0 },
+  '2026-04': { railway: 5, twilio: 19.46, claude: 9.29 },
+  '2026-05': { railway: 5, twilio: 20.35, claude: 66.95 },
+};
+
 // ── Helpers de fecha ──────────────────────────────────────────────────────────
 
 /**
@@ -403,19 +413,105 @@ async function upsertMonth(ym, { railway, twilioUsd, claudeUsd }) {
   return { ym, railway: railwayUsd, twilioUsd: twilioFin, claudeUsd: claudeFin, total: +total.toFixed(2) };
 }
 
+// ── Claude del BOT (usage_report filtrado por su api_key) ─────────────────────
+// El cost_report del workspace mezcla las 3 keys (bot + Admin + Claude Code). Para
+// el costo SOLO del bot, usamos usage_report/messages filtrado por BOT_API_KEY_ID
+// y multiplicamos los tokens por las tarifas de su modelo.
+async function fetchBotClaudeMonth(startISO, endISO) {
+  if (!process.env.ANTHROPIC_ADMIN_KEY) return { usd: null, status: 'no-admin-key' };
+  const botKey = process.env.BOT_API_KEY_ID;
+  if (!botKey) return { usd: null, status: 'no-BOT_API_KEY_ID' };
+
+  const byModel = {};
+  const statuses = [];
+  let page = null, pages = 0, results = 0;
+  do {
+    const p = new URLSearchParams({ starting_at: startISO, ending_at: endISO, bucket_width: '1d', limit: '31' });
+    p.append('api_key_ids[]', botKey);
+    p.append('group_by[]', 'model');
+    if (page) p.set('page', page);
+    const res = await adminFetch(`https://api.anthropic.com/v1/organizations/usage_report/messages?${p}`);
+    statuses.push(res.status);
+    if (!res.ok) { const t = await res.text().catch(() => ''); throw new Error(`usage_report HTTP ${res.status} ${t.slice(0, 200)}`); }
+    const j = await res.json();
+    pages++;
+    for (const b of (j.data || [])) for (const r of (b.results || [])) {
+      results++;
+      const model = r.model || 'sin-model';
+      const t = extractTokens(r);
+      const acc = byModel[model] || (byModel[model] = { uncached_input: 0, cache_write_5m: 0, cache_write_1h: 0, cache_read: 0, output: 0 });
+      for (const f of Object.keys(t)) acc[f] += t[f];
+    }
+    page = j.has_more ? j.next_page : null;
+  } while (page && pages < 100);
+
+  let usd = 0;
+  const byModelUsd = {};
+  for (const [model, t] of Object.entries(byModel)) { const u = usdFromTokens(model, t); usd += u; byModelUsd[model] = +u.toFixed(4); }
+  console.log(`💵 Bot Claude ${startISO.slice(0, 10)}→${endISO.slice(0, 10)}: $${usd.toFixed(2)} USD (${JSON.stringify(byModelUsd)})`);
+  return { usd: +usd.toFixed(4), status: 'ok', byModelUsd, statuses, pages, results };
+}
+
+// Escribe un mes FIJO (validado) en "8 Costos". Conserva conteos (C/E/F) y Otros
+// (H); total = railway + twilio + claude + otros; marca "Actualizado" = fijo.
+async function writeFixedMonth(ym, vals) {
+  const sheets = getSheets();
+  await ensureSheet(sheets);
+  const rows = await readRows(sheets);
+  const idx = rows.findIndex((r, i) => i > 0 && r[0] === ym);
+  const ex  = idx > 0 ? rows[idx] : [];
+
+  const twilioMsgs = ex[2] !== undefined ? ex[2] : '';
+  const claudeIn   = ex[4] !== undefined ? ex[4] : '';
+  const claudeOut  = ex[5] !== undefined ? ex[5] : '';
+  const otros      = +ex[7] || 0;
+
+  const railway = +(+vals.railway).toFixed(2);
+  const twilio  = +(+vals.twilio).toFixed(4);
+  const claude  = +(+vals.claude).toFixed(4);
+  const total   = +(railway + twilio + claude + otros).toFixed(2);
+
+  const out = [ym, railway, twilioMsgs, twilio, claudeIn, claudeOut, claude, otros, total, 'fijo (validado)'];
+
+  if (idx > 0) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID, range: `${SHEET}!A${idx + 1}:J${idx + 1}`,
+      valueInputOption: 'USER_ENTERED', resource: { values: [out] },
+    });
+  } else {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID, range: `${SHEET}!A:J`,
+      valueInputOption: 'USER_ENTERED', resource: { values: [out] },
+    });
+  }
+  return { ym, railway, twilioUsd: twilio, claudeUsd: claude, total, fixed: true };
+}
+
 // ── Orquestación ──────────────────────────────────────────────────────────────
 
 async function syncAll(monthsBack = 6, opts = {}) {
   const debug = !!opts.debug;
   const ranges = monthRanges(monthsBack);
-  const hasAdmin = !!process.env.ANTHROPIC_ADMIN_KEY;
+  const currentYm = ranges[ranges.length - 1].ym; // último = mes en curso
 
-  // Meses en paralelo: cada upsertMonth actualiza su propia fila (rango distinto),
-  // así el endpoint responde rápido y no choca con el timeout del proxy (502).
+  // Meses en paralelo: cada escritura toca su propia fila (rango distinto).
   const summary = await Promise.all(ranges.map(async (m) => {
     try {
+      // 1) Meses fijos validados → escribir valores fijos, SIN llamar a las APIs.
+      if (MESES_FIJOS[m.ym]) {
+        const res = await writeFixedMonth(m.ym, MESES_FIJOS[m.ym]);
+        console.log(`📌 fijo ${m.ym}: Railway $${res.railway} | Twilio $${res.twilioUsd} | Claude $${res.claudeUsd} | Total $${res.total}`);
+        return { ...res, twilioStatus: 'fijo', claudeStatus: 'fijo' };
+      }
+
+      // 2) Solo el mes en curso (y futuros) se sincroniza. Meses PASADOS no-fijos
+      //    no se re-sobrescriben.
+      if (m.ym < currentYm) {
+        return { ym: m.ym, skipped: 'pasado-no-fijo' };
+      }
+
+      // 3) Mes en curso: Twilio real + Claude SOLO del bot (usage_report por key).
       const startDate = m.startISO.slice(0, 10);
-      // Último día del mes = día anterior al primer día del mes siguiente.
       const endDate = new Date(m.end.getTime() - 86400000).toISOString().slice(0, 10);
 
       let twilioUsd = null, twilioStatus = 'ok', twilioDebug = null;
@@ -425,10 +521,10 @@ async function syncAll(monthsBack = 6, opts = {}) {
       }
       catch (e) { twilioStatus = `error: ${e.message}`; console.error(`Twilio ${m.ym} error: ${e.message}`); }
 
-      let claudeUsd = null, claudeStatus = hasAdmin ? 'ok' : 'no-admin-key', claudeDebug = null;
+      let claudeUsd = null, claudeStatus = 'ok', claudeDebug = null;
       try {
-        const cr = await fetchAnthropicMonth(m.startISO, m.endISO);
-        if (cr) { claudeUsd = cr.usd; claudeDebug = cr.debug; }
+        const cr = await fetchBotClaudeMonth(m.startISO, m.endISO);
+        claudeUsd = cr.usd; claudeStatus = cr.status; claudeDebug = cr;
       }
       catch (e) { claudeStatus = `error: ${e.message}`; console.error(`Anthropic ${m.ym} error: ${e.message}`); }
 
@@ -451,15 +547,19 @@ async function syncAll(monthsBack = 6, opts = {}) {
 // ── Arranque ──────────────────────────────────────────────────────────────────
 
 function start() {
-  // ~30s después del boot para no bloquear el arranque
-  setTimeout(() => {
-    syncAll().catch(e => console.error('costSync inicial error:', e.message));
-  }, 30 * 1000);
+  // COST_SYNC_ON_BOOT (default true): corre un sync ~30s tras arrancar. Si es
+  // 'false', solo deja el intervalo de 6h (útil para no gastar rate limit en cada deploy).
+  const onBoot = process.env.COST_SYNC_ON_BOOT !== 'false';
+  if (onBoot) {
+    setTimeout(() => {
+      syncAll().catch(e => console.error('costSync inicial error:', e.message));
+    }, 30 * 1000);
+  }
   // luego cada 6 horas
   setInterval(() => {
     syncAll().catch(e => console.error('costSync periódico error:', e.message));
   }, 6 * 60 * 60 * 1000);
-  console.log('🔄 costSync iniciado — costos reales (Twilio + Anthropic) ~30s tras boot y cada 6h');
+  console.log(`🔄 costSync iniciado — ${onBoot ? 'sync ~30s tras boot y ' : '(boot sync OFF) '}cada 6h`);
 }
 
 module.exports = {
