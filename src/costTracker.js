@@ -194,36 +194,34 @@ async function flush() {
 
 // ── Lectura para el dashboard (/api/costs) ────────────────────────────────────
 
+// Fuente de la verdad: los USD reales ya guardados en "8 Costos" (los escribe
+// costSync con datos facturados de Twilio/Anthropic). NO recalcula desde conteos.
 async function getCosts() {
   const sheets = getSheets();
   await ensureSheet(sheets);
   const rows = await readRows(sheets);
 
-  const map = {};
-  rows.slice(1).forEach(r => { if (r[0]) map[r[0]] = rowToObj(r); });
-
-  // sumar lo que aún está en memoria (no volcado) para que el dato esté al día
-  Object.keys(pending).forEach(k => {
-    if (!map[k]) map[k] = { ym: k, twilioMsgs: 0, claudeIn: 0, claudeOut: 0, otros: 0 };
-    map[k].twilioMsgs += pending[k].twilioMsgs;
-    map[k].claudeIn   += pending[k].claudeIn;
-    map[k].claudeOut  += pending[k].claudeOut;
-  });
-
-  return Object.values(map)
-    .map(o => {
-      const c = computeUsd(o);
+  return rows.slice(1)
+    .filter(r => r[0])
+    .map(r => {
+      const railway = +r[1] || 0;  // B
+      const twilio  = +r[3] || 0;  // D
+      const claude  = +r[6] || 0;  // G
+      const otros   = +r[7] || 0;  // H
+      const total   = (r[8] !== undefined && r[8] !== '')
+        ? (+r[8] || 0)             // I
+        : railway + twilio + claude + otros + RATES.sheetsMonthly;
       return {
-        ym:      o.ym,
-        railway: RATES.railwayMonthly,
-        twilio:  +c.twilioUsd.toFixed(4),
-        claude:  +c.claudeUsd.toFixed(4),
+        ym:      r[0],
+        railway,
+        twilio,
+        claude,
         sheets:  RATES.sheetsMonthly,
-        otros:   o.otros || 0,
-        total:   +c.total.toFixed(2),
-        twilioMsgs: o.twilioMsgs,
-        claudeIn:   o.claudeIn,
-        claudeOut:  o.claudeOut,
+        otros,
+        total,
+        twilioMsgs: +r[2] || 0,    // C (sublínea)
+        claudeIn:   +r[4] || 0,    // E (sublínea)
+        claudeOut:  +r[5] || 0,    // F (sublínea)
       };
     })
     .sort((a, b) => (a.ym < b.ym ? -1 : a.ym > b.ym ? 1 : 0));
@@ -244,4 +242,11 @@ module.exports = {
   getCosts,
   flush,
   start,
+  // helpers reutilizados por costSync.js
+  getSheets,
+  ensureSheet,
+  readRows,
+  RATES,
+  SHEET,
+  SPREADSHEET_ID,
 };
