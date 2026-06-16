@@ -169,10 +169,6 @@ async function webhookHandler(req, res) {
     }
   }
 
-  // Costos: contar el mensaje ENTRANTE del cliente (ya pasó dedup y validación
-  // de From/Body). Twilio cobra entrantes y salientes. No debe romper el flujo.
-  try { require('./costTracker').recordTwilioMessage(1); } catch (e) {}
-
   console.log(`📨 [${from}]: ${body}`);
 
   // Registrar mensaje individual en el log antes del debounce

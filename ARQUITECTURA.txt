@@ -53,8 +53,6 @@ webhookHandler.js       (199) — exports: webhookHandler (función)
     escribe la transcripción. Para el nombre del transcript usa
     session.customer.name / tempData.name y, si vienen vacíos, cae a
     sheetsService.findCustomer(from) (fix anti "Sin nombre" en dashboard).
-    Cuenta el mensaje ENTRANTE para costos con costTracker.recordTwilioMessage(1)
-    (tras pasar dedup y validación de From/Body).
 
 botLogic.js             (387) — exports: { handleMessage, handleMediaMessage, notifyWig }
     Capa delgada sobre el cerebro IA.
@@ -65,8 +63,7 @@ botLogic.js             (387) — exports: { handleMessage, handleMediaMessage, 
         colaEscalaciones; marca 🚨🚨🚨 si es urgente.
 
 aiBot.js                — exports: { handleMessageIA }
-    EL CEREBRO IA (ver sección 4). Tras cada llamada a Claude registra el uso de
-    tokens con costTracker.recordClaudeUsage(in, out). MASTER_PROMPT + 3 herramientas + loop de
+    EL CEREBRO IA (ver sección 4). MASTER_PROMPT + 3 herramientas + loop de
     tool calling con Claude (claude-sonnet-4-6).
 
 sessionManager.js       (181) — exports: { getSession, createSession, updateSession,
@@ -95,20 +92,18 @@ knowledgeService.js     (201) — exports: { getKnowledgeBase, getProductosPorEs
     Catálogo (pestaña 7) y base de conocimiento desde Sheets, con caché 5 min.
 
 twilioService.js        — exports: { sendMessage }
-    Envío de mensajes de WhatsApp por Twilio. Cuenta cada envío para costos con
-    costTracker.recordTwilioMessage(1).
+    Envío de mensajes de WhatsApp por Twilio.
 
-costTracker.js          — exports: { recordClaudeUsage, recordTwilioMessage,
-                                getCosts, flush, start, + helpers de Sheets }
-    Helpers de la pestaña "8 Costos" (getSheets/ensureSheet/readRows, RATES,
-    SHEET, SPREADSHEET_ID) reutilizados por costSync. getCosts() alimenta
-    GET /api/costs leyendo los USD REALES ya guardados (columnas B/D/G/I; conteos
-    C/E/F solo para las sublíneas) — ya NO recalcula desde estimaciones.
-    recordClaudeUsage/recordTwilioMessage y flush() siguen ahí (acumulan en
-    memoria) pero start() YA NO se llama: la fuente de la verdad es costSync, no
-    el volcado estimado. Tarifas configurables por env vars: RAILWAY_MONTHLY_USD,
-    SHEETS_MONTHLY_USD, TWILIO_NUMBER_USD, TWILIO_PER_MSG_USD, CLAUDE_INPUT_PER_M,
-    CLAUDE_OUTPUT_PER_M.
+costTracker.js          — exports: { getCosts, getSheets, ensureSheet, readRows,
+                                RATES, SHEET, SPREADSHEET_ID }
+    Acceso a la pestaña "8 Costos". Provee los helpers de Sheets que reutiliza
+    costSync y getCosts(), que alimenta GET /api/costs leyendo los USD REALES ya
+    guardados (columnas B/D/G/I; conteos C/E/F como sublíneas, null si la celda
+    está vacía → el dashboard oculta la sublínea). NO recalcula nada.
+    El antiguo contador en vivo (recordClaudeUsage/recordTwilioMessage + flush +
+    pending + computeUsd + tarifas estimadas) se ELIMINÓ: era código muerto desde
+    que costSync.start() reemplazó a costTracker.start(). RATES solo conserva los
+    montos fijos RAILWAY_MONTHLY_USD (default 5) y SHEETS_MONTHLY_USD (default 0).
 
 costSync.js             — exports: { monthRanges, fetchTwilioMonth,
                                 fetchAnthropicMonth, upsertMonth, syncAll, start,
@@ -147,10 +142,14 @@ costSync.js             — exports: { monthRanges, fetchTwilioMonth,
     fetchAnthropicMonth (cost_report del workspace, /ANTHROPIC_COST_DIVISOR, default
     100) queda disponible para auditoría pero ya NO alimenta el sync. diagKeys +
     fetchApiKeys + fetchUsageByKey sirven a GET /api/costs/keys (desglose por key).
-    upsertMonth conserva conteos (C/E/F) y Otros (H) si la fila existía. syncAll
-    corre los meses en paralelo (evita el 502 del proxy) y devuelve un resumen con
-    twilioStatus/claudeStatus por mes. start() (desde index.js) corre el primer
-    sync ~30s tras el boot salvo COST_SYNC_ON_BOOT=false, y luego cada 6h.
+    Conteos C/E/F de la hoja: los ESCRIBE el sync, no un contador en vivo. E/F
+    (Claude tok in/out) = tokens reales del bot del usage_report; C (Twilio msgs)
+    = en blanco (no se mide de forma confiable sin una llamada extra). Los meses
+    fijos dejan C/E/F en blanco. upsertMonth conserva Otros (H); escribe los conteos
+    si vienen o conserva los previos si no. syncAll corre los meses en paralelo
+    (evita el 502 del proxy) y devuelve un resumen con twilioStatus/claudeStatus por
+    mes. start() (desde index.js) corre el primer sync ~30s tras el boot salvo
+    COST_SYNC_ON_BOOT=false, y luego cada 6h.
 
 transcriptService.js    (138) — exports: { saveTranscript, getTranscripts,
                                 updateTranscript, getExistingTranscript }
@@ -312,14 +311,15 @@ Google Sheets GOOGLE_SHEETS_ID, GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_SERVICE_ACCO
 Shopify       SHOPIFY_WEBHOOK_SECRET, SHOPIFY_CLIENT_ID, SHOPIFY_CLIENT_SECRET,
               SHOPIFY_STORE_URL
 Redis         REDIS_URL, REDIS_HOST, REDIS_PORT, REDIS_DB
-Costos        RAILWAY_MONTHLY_USD (default 5), SHEETS_MONTHLY_USD (default 0),
-              TWILIO_NUMBER_USD, TWILIO_PER_MSG_USD, CLAUDE_INPUT_PER_M,
-              CLAUDE_OUTPUT_PER_M (tarifas estimadas de costTracker, ya casi sin uso
-              porque costSync trae USD reales);
+Costos        RAILWAY_MONTHLY_USD (default 5), SHEETS_MONTHLY_USD (default 0)
+              — únicos montos fijos; Twilio y Claude son reales (costSync).
               ANTHROPIC_COST_DIVISOR (default 100; divisor centavos→USD del
               cost_report, solo para auditoría/fetchAnthropicMonth);
               COST_SYNC_ON_BOOT (default true; si "false", start() no corre el sync
               ~30s tras el boot, solo deja el intervalo de 6h)
+              (Las tarifas estimadas CLAUDE_INPUT_PER_M, CLAUDE_OUTPUT_PER_M,
+              TWILIO_PER_MSG_USD, TWILIO_NUMBER_USD se ELIMINARON con el contador
+              en vivo; las tarifas reales de Claude por modelo viven en costSync.)
 Dashboard     DASHBOARD_TOKEN (opcional; si se define, /api/costs, /api/costs/sync y
               /api/costs/keys exigen ese token por header x-dashboard-token o ?token=)
 Sistema       NODE_ENV, PORT, DEBUG, LOG_LEVEL, RAILWAY_GIT_COMMIT_SHA

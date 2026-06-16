@@ -186,8 +186,8 @@ app.listen(PORT, () => {
   colaEscalaciones.setRedis(getRedisClient());
   console.log('📥 Cola de escalaciones fuera de horario activa');
 
-  // Sincroniza costos REALES (Twilio + Anthropic) a "8 Costos": ~30s tras boot y cada 6h.
-  // (Reemplaza el volcado estimado cada 3 min de costTracker, que pisaría los USD reales.)
+  // Sincroniza costos REALES (Twilio totalprice + Claude del bot) a "8 Costos":
+  // ~30s tras boot (salvo COST_SYNC_ON_BOOT=false) y cada 6h. Fuente de la verdad.
   costSync.start();
 
   // Cron de seguimientos — corre cada 15 minutos (idempotent)

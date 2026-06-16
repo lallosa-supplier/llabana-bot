@@ -362,11 +362,13 @@ async function diagKeys(ym) {
 // ── Escritura a "8 Costos" ────────────────────────────────────────────────────
 
 /**
- * Escribe/actualiza la fila del mes. Conserva conteos (C/E/F) y Otros (H) si la
- * fila ya existía. Si railway/twilioUsd/claudeUsd llegan null, conserva el valor
- * previo de esa columna (no lo pisa con 0).
+ * Escribe/actualiza la fila del mes. Conserva Otros (H) si la fila ya existía.
+ * USD (railway/twilioUsd/claudeUsd): si llegan null, conserva el valor previo (no
+ * lo pisa con 0). Conteos: claudeIn/claudeOut se escriben si vienen (tokens reales
+ * del bot), o se conservan si null; twilioMsgs se escribe si se pasa (incl. ''),
+ * o se conserva si no se pasa.
  */
-async function upsertMonth(ym, { railway, twilioUsd, claudeUsd }) {
+async function upsertMonth(ym, { railway, twilioUsd, claudeUsd, claudeIn, claudeOut, twilioMsgs } = {}) {
   const sheets = getSheets();
   await ensureSheet(sheets);
   const rows = await readRows(sheets);
@@ -374,26 +376,27 @@ async function upsertMonth(ym, { railway, twilioUsd, claudeUsd }) {
   const idx = rows.findIndex((r, i) => i > 0 && r[0] === ym);
   const ex  = idx > 0 ? rows[idx] : [];
 
-  // Conservar conteos y otros tal cual estaban
-  const twilioMsgs = ex[2] !== undefined ? ex[2] : '';
-  const claudeIn   = ex[4] !== undefined ? ex[4] : '';
-  const claudeOut  = ex[5] !== undefined ? ex[5] : '';
-  const otros      = +ex[7] || 0;
+  const otros = +ex[7] || 0;
 
   // null → conservar lo previo
   const railwayUsd = (railway   == null) ? (+ex[1] || 0) : +(+railway).toFixed(2);
   const twilioFin  = (twilioUsd == null) ? (+ex[3] || 0) : +(+twilioUsd).toFixed(4);
   const claudeFin  = (claudeUsd == null) ? (+ex[6] || 0) : +(+claudeUsd).toFixed(4);
 
+  // Conteos C/E/F: escribir si viene valor; conservar lo previo si no.
+  const cTwilioMsgs = (twilioMsgs !== undefined) ? twilioMsgs : (ex[2] !== undefined ? ex[2] : '');
+  const cClaudeIn   = (claudeIn   != null)       ? claudeIn   : (ex[4] !== undefined ? ex[4] : '');
+  const cClaudeOut  = (claudeOut  != null)       ? claudeOut  : (ex[5] !== undefined ? ex[5] : '');
+
   const total = railwayUsd + twilioFin + claudeFin + RATES.sheetsMonthly + otros;
 
   const out = [
     ym,                       // A
     railwayUsd,               // B
-    twilioMsgs,               // C (conteo, intacto)
+    cTwilioMsgs,              // C (Twilio msgs)
     twilioFin,                // D
-    claudeIn,                 // E (conteo, intacto)
-    claudeOut,                // F (conteo, intacto)
+    cClaudeIn,                // E (Claude tok in — reales del bot)
+    cClaudeOut,               // F (Claude tok out)
     claudeFin,                // G
     otros,                    // H
     +total.toFixed(2),        // I
@@ -451,15 +454,20 @@ async function fetchBotClaudeMonth(startISO, endISO) {
     page = j.has_more ? j.next_page : null;
   } while (page && pages < 100);
 
-  let usd = 0;
+  let usd = 0, tokIn = 0, tokOut = 0;
   const byModelUsd = {};
-  for (const [model, t] of Object.entries(byModel)) { const u = usdFromTokens(model, t); usd += u; byModelUsd[model] = +u.toFixed(4); }
-  console.log(`💵 Bot Claude ${startISO.slice(0, 10)}→${endISO.slice(0, 10)}: $${usd.toFixed(2)} USD (${JSON.stringify(byModelUsd)})`);
-  return { usd: +usd.toFixed(4), status: 'ok', byModelUsd, statuses, pages, results };
+  for (const [model, t] of Object.entries(byModel)) {
+    const u = usdFromTokens(model, t); usd += u; byModelUsd[model] = +u.toFixed(4);
+    tokIn  += t.uncached_input + t.cache_write_5m + t.cache_write_1h + t.cache_read;
+    tokOut += t.output;
+  }
+  console.log(`💵 Bot Claude ${startISO.slice(0, 10)}→${endISO.slice(0, 10)}: $${usd.toFixed(2)} USD | in=${tokIn} out=${tokOut} (${JSON.stringify(byModelUsd)})`);
+  return { usd: +usd.toFixed(4), status: 'ok', tokIn, tokOut, byModelUsd, statuses, pages, results };
 }
 
-// Escribe un mes FIJO (validado) en "8 Costos". Conserva conteos (C/E/F) y Otros
-// (H); total = railway + twilio + claude + otros; marca "Actualizado" = fijo.
+// Escribe un mes FIJO (validado) en "8 Costos". Conserva Otros (H); deja los
+// conteos C/E/F en blanco (no tenemos el desglose de los meses fijos y no importa).
+// total = railway + twilio + claude + otros; marca "Actualizado" = fijo.
 async function writeFixedMonth(ym, vals) {
   const sheets = getSheets();
   await ensureSheet(sheets);
@@ -467,17 +475,15 @@ async function writeFixedMonth(ym, vals) {
   const idx = rows.findIndex((r, i) => i > 0 && r[0] === ym);
   const ex  = idx > 0 ? rows[idx] : [];
 
-  const twilioMsgs = ex[2] !== undefined ? ex[2] : '';
-  const claudeIn   = ex[4] !== undefined ? ex[4] : '';
-  const claudeOut  = ex[5] !== undefined ? ex[5] : '';
-  const otros      = +ex[7] || 0;
+  const otros = +ex[7] || 0;
 
   const railway = +(+vals.railway).toFixed(2);
   const twilio  = +(+vals.twilio).toFixed(4);
   const claude  = +(+vals.claude).toFixed(4);
   const total   = +(railway + twilio + claude + otros).toFixed(2);
 
-  const out = [ym, railway, twilioMsgs, twilio, claudeIn, claudeOut, claude, otros, total, 'fijo (validado)'];
+  // C/E/F en blanco para meses fijos.
+  const out = [ym, railway, '', twilio, '', '', claude, otros, total, 'fijo (validado)'];
 
   if (idx > 0) {
     await sheets.spreadsheets.values.update({
@@ -534,15 +540,18 @@ async function syncAll(monthsBack = 6, opts = {}) {
       }
       catch (e) { twilioStatus = `error: ${e.message}`; console.error(`Twilio ${m.ym} error: ${e.message}`); }
 
-      let claudeUsd = null, claudeStatus = 'ok', claudeDebug = null;
+      let claudeUsd = null, claudeIn = null, claudeOut = null, claudeStatus = 'ok', claudeDebug = null;
       try {
         const cr = await fetchBotClaudeMonth(m.startISO, m.endISO);
-        claudeUsd = cr.usd; claudeStatus = cr.status; claudeDebug = cr;
+        claudeUsd = cr.usd; claudeIn = cr.tokIn ?? null; claudeOut = cr.tokOut ?? null;
+        claudeStatus = cr.status; claudeDebug = cr;
       }
       catch (e) { claudeStatus = `error: ${e.message}`; console.error(`Anthropic ${m.ym} error: ${e.message}`); }
 
       const res = await upsertMonth(m.ym, {
         railway: RATES.railwayMonthly, twilioUsd, claudeUsd,
+        claudeIn, claudeOut,
+        twilioMsgs: '', // Twilio msgs: no se mide de forma confiable sin llamada extra → en blanco
       });
       console.log(`✅ sync ${m.ym}: Railway $${res.railway} | Twilio $${twilioUsd ?? '(prev)'} [${twilioStatus}] | Claude $${claudeUsd ?? '(prev)'} [${claudeStatus}] | Total $${res.total}`);
       const out = { ...res, twilioStatus, claudeStatus };
