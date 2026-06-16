@@ -231,10 +231,22 @@ async function handleMessageIA(phone, messageBody) {
   let messages = history.slice(-20);
   let finalText = '';
 
+  // Prompt caching: el system prompt (incluye CONOCIMIENTO + CATÁLOGO) y las TOOLS
+  // son idénticos en las 5 vueltas del loop y entre mensajes, así que se cachean
+  // (escritura 1.25x la 1a vez, lectura 0.1x después). NO se muta TOOLS global:
+  // copia local con cache_control en el último tool.
+  const systemBlocks = [
+    { type: 'text', text: system, cache_control: { type: 'ephemeral' } },
+  ];
+  const toolsCached = TOOLS.map((t, i) =>
+    i === TOOLS.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t
+  );
+
   for (let i = 0; i < 5; i++) {
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6', max_tokens: 1024, system, tools: TOOLS, messages,
+      model: 'claude-sonnet-4-6', max_tokens: 1024, system: systemBlocks, tools: toolsCached, messages,
     });
+    console.log(`💾 cache_create=${response.usage?.cache_creation_input_tokens||0} cache_read=${response.usage?.cache_read_input_tokens||0} input=${response.usage?.input_tokens||0} output=${response.usage?.output_tokens||0}`);
     const textos = response.content.filter(b => b.type === 'text').map(b => b.text);
     if (textos.length) finalText = textos.join('\n').trim();
 
