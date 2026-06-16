@@ -65,6 +65,13 @@ botLogic.js             (387) — exports: { handleMessage, handleMediaMessage, 
 aiBot.js                — exports: { handleMessageIA }
     EL CEREBRO IA (ver sección 4). MASTER_PROMPT + 3 herramientas + loop de
     tool calling con Claude (claude-sonnet-4-6).
+    PROMPT CACHING: el system se manda como bloque con cache_control:{type:
+    'ephemeral'} (incluye system prompt + CONOCIMIENTO + CATÁLOGO) y el último tool
+    de una copia local (toolsCached) también lleva cache_control. Eso cachea el
+    prefijo estable (~28k tokens) y lo relee a 0.1x del precio en turnos siguientes
+    dentro del TTL de ~5 min (escritura 1.25x la 1a vez). Cada llamada a Claude
+    loguea "💾 cache_create/cache_read/input/output" para monitorear. Validado en
+    prod: cache_read=28312 en el 2º mensaje → ~88% de ahorro en tokens de entrada.
 
 sessionManager.js       (181) — exports: { getSession, createSession, updateSession,
                                 deleteSession, getActiveSessionCount,
@@ -257,6 +264,10 @@ HERRAMIENTAS (tool calling):
 LOOP: hasta 5 iteraciones. En cada una manda messages+tools a Claude; si
 stop_reason !== 'tool_use' termina; si pide herramientas, las ejecuta, mete los
 tool_result y vuelve a llamar. El texto final es lo que lee el cliente.
+El system (bloque con cache_control) y toolsCached son idénticos en las 5 vueltas
+y entre mensajes → se cachean: a partir de la 2ª vuelta/mensaje (dentro del TTL
+de ~5 min) el prefijo se relee a 0.1x. Log "💾 cache_create/cache_read/input/
+output" por llamada.
 
 --------------------------------------------------------------------------------
 5. WEBHOOKS DE SHOPIFY (shopifyWebhookHandler.js)
@@ -300,11 +311,16 @@ Pestañas usadas por el código:
 --------------------------------------------------------------------------------
 7. VARIABLES DE ENTORNO (process.env.* encontradas en src/)
 --------------------------------------------------------------------------------
-IA            ANTHROPIC_API_KEY (bot → Claude),
+IA            ANTHROPIC_API_KEY (la key que el bot USA para funcionar; si es
+              inválida → 401 en cada mensaje → "tuve un problema técnico". Se ROTÓ
+              hoy porque la anterior daba 401),
               ANTHROPIC_ADMIN_KEY (admin key del Usage/Cost API; sin ella el sync
               omite Claude),
-              BOT_API_KEY_ID (id de la key del bot "Chatbot La Llosa 2"; el sync
+              BOT_API_KEY_ID (id de la MISMA key que ANTHROPIC_API_KEY; el sync
               mide el Claude del mes vivo SOLO de esta key vía usage_report)
+              ⚠️ ANTHROPIC_API_KEY (el secreto) y BOT_API_KEY_ID (su id) deben
+              apuntar a la MISMA key. Si rotas una, actualiza la otra: si no, el
+              bot funciona pero el costo se mide sobre la key equivocada (o al revés).
 Twilio        TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER,
               WIG_WHATSAPP_NUMBER
 Google Sheets GOOGLE_SHEETS_ID, GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_SERVICE_ACCOUNT_BASE
@@ -356,4 +372,18 @@ generate-log.js, production-analysis.js, tests.js, scripts/*.
 Ninguna. Todos los require('./...') de la cadena viva resuelven a archivos
 existentes. botLogic.js exporta { handleMessage, handleMediaMessage, notifyWig }
 y carga sin ReferenceError.
+
+--------------------------------------------------------------------------------
+10. PENDIENTES
+--------------------------------------------------------------------------------
+- ⚠️ ALINEAR BOT_API_KEY_ID con la key NUEVA del bot. Hoy se rotó
+  ANTHROPIC_API_KEY (la vieja daba 401). BOT_API_KEY_ID debe ser el id de ESA
+  misma key nueva; si quedó apuntando a la vieja, el costo del mes vivo se mide
+  sobre la key equivocada. Verificar con GET /api/costs/keys?month=YYYY-MM y, si
+  hace falta, actualizar BOT_API_KEY_ID en Railway.
+- CONGELAR junio 2026 en MESES_FIJOS al cierre de mes. Junio quedó PARTIDO entre
+  dos keys por la rotación (parte con la vieja, parte con la nueva), así que su
+  costo de Claude vía usage_report por una sola key puede salir incompleto. Al
+  cerrar el mes, validar el total real contra la consola de Anthropic y agregarlo
+  a MESES_FIJOS (como mar/abr/may) para blindarlo.
 ================================================================================
