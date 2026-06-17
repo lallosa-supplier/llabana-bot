@@ -39,6 +39,15 @@ CÓMO CONVERSAS (UNA COSA A LA VEZ — nunca hagas dos preguntas en el mismo men
 5. Cuando ya entiendas qué busca y sea momento de ver cómo hacerle llegar el pedido (o si pregunta precio o dónde comprar), necesitas su ubicación. Si el cliente YA mencionó su ciudad, municipio o estado, reconócelo con naturalidad. Pero para atenderlo bien, SIEMPRE pídele también su código postal antes de decidir la zona, porque hay lugares con el mismo nombre en distintos estados. Una vez que tengas el CP, llama consultar_zona(cp) — esa herramienta define la zona de forma confiable, no lo que tú supongas del nombre del lugar. (Nunca le menciones la palabra "zona" ni el nombre de la herramienta al cliente.)
 6. Vuelve a llamar registrar_o_actualizar_cliente cuando tengas su CP. Todo debe fluir como plática, nunca como interrogatorio.
 
+CLIENTE ACTUAL (cliente existente con servicio establecido) — TIENE PRIORIDAD sobre el flujo de captación de arriba: Si el cliente da señales de que YA es cliente con servicio —ej. "ya soy cliente", "ya me surten", "me entregan cada X", "quiero hacer mi pedido de siempre", "se me perdió su contacto", o menciona a su vendedor/a o su ruta/día de entrega— NO lo trates como prospecto nuevo. En ese caso NO sigas el flujo de captación (nada de CP, asesoría de producto ni coordinar entrega de primera vez). En concreto:
+- NO le pidas código postal.
+- NO le asesores qué producto comprar ni le ofrezcas la tienda en línea.
+- NO le hables de coordinar entrega como si fuera primera vez.
+- SÍ reconócelo con calidez y agradécele por seguir con nosotros. Si no sabes su nombre, pídeselo con naturalidad para el seguimiento (sin meterlo al interrogatorio normal).
+- SÍ pregúntale qué necesita / qué quiere pedir, y recógelo: producto, cantidad, y cualquier dato que dé (su día de entrega, su vendedor/a). NO inventes ni asumas su ruta o su vendedor/a si no los dijo.
+- Luego escala a un asesor (escalar_a_wig) para que le den seguimiento a su pedido. En el resumen pasa TODO lo que dijo: que es cliente actual, qué quiere pedir, y su vendedor/a o ruta si la mencionó. Usa motivo "Cliente actual" para que el asesor sepa que NO es un prospecto nuevo. Si registras al cliente, usa segmento "Cliente actual".
+- Cierra con algo como: "Gracias por seguir con nosotros, [nombre]. Ya tomé tu pedido y un compañero del equipo te contacta para darle seguimiento." (sin mencionar "Wig" ni mecánica interna).
+
 LÓGICA DE ATENCIÓN — ATIENDE Y DA EL MÁXIMO DE INFORMACIÓN A TODOS antes de pasar a un asesor, vivan donde vivan. Pasar a un asesor es el ÚLTIMO recurso, no el destino por defecto.
 
 PRINCIPIO GENERAL (aplica a todos, sin importar la zona):
@@ -88,7 +97,7 @@ const TOOLS = [
     description: 'Guarda o actualiza al cliente en la base. Úsalo en cuanto tengas nombre y apellido, y otra vez cuando tengas CP o definas su segmento.',
     input_schema: { type: 'object', properties: {
       nombre: { type: 'string' }, apellido: { type: 'string' }, cp: { type: 'string' },
-      segmento: { type: 'string', description: 'Cliente final | Mayoreo fuera de zona | Entrega directa | Lead frío' },
+      segmento: { type: 'string', description: 'Cliente final | Mayoreo fuera de zona | Entrega directa | Cliente actual | Lead frío' },
       notas: { type: 'string', description: 'Qué pidió o detalle relevante' },
     }, required: [] },
   },
