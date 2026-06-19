@@ -196,17 +196,26 @@ async function toolEscalar(input, phone, session) {
   }
 
   const { notifyWig } = require('./botLogic');
-  await notifyWig(phone, actual, input.motivo || 'Escalación', input.resumen || '');
-  await sessionManager.updateSession(phone, {
-    flowState: 'waiting_for_wig',
-    tempData: { ...(actual.tempData || {}), yaEscalado: true },
-  });
-  // Reflejar en el snapshot en memoria para bloquear más llamadas en este mismo turno.
-  if (session) {
-    session.flowState = 'waiting_for_wig';
-    session.tempData = { ...(session.tempData || {}), yaEscalado: true };
+  const res = await notifyWig(phone, actual, input.motivo || 'Escalación', input.resumen || '');
+
+  // Solo damos por escalado (y prometemos contacto) si el aviso llegó de verdad.
+  // Si falló (ventana de Wig cerrada, sin número, excepción) NO seteamos
+  // waiting_for_wig — así no disparamos el follow-up fantasma ni prometemos en falso.
+  if (res && res.notified) {
+    await sessionManager.updateSession(phone, {
+      flowState: 'waiting_for_wig',
+      tempData: { ...(actual.tempData || {}), yaEscalado: true },
+    });
+    // Reflejar en el snapshot en memoria para bloquear más llamadas en este mismo turno.
+    if (session) {
+      session.flowState = 'waiting_for_wig';
+      session.tempData = { ...(session.tempData || {}), yaEscalado: true };
+    }
+    return 'Escalado a Wig. Un asesor lo atenderá.';
   }
-  return 'Escalado a Wig. Un asesor lo atenderá.';
+
+  console.error(`🚨 [ESCALACIÓN] No se pudo avisar al asesor (${res?.reason || 'desconocido'}) para ${phone}. El bot NO promete contacto inmediato.`);
+  return 'No se pudo contactar al asesor ahora mismo. NO prometas contacto inmediato; ofrece disculpas al cliente y dile que en cuanto haya disponibilidad lo atienden.';
 }
 
 async function ejecutarHerramienta(nombre, input, phone, session) {

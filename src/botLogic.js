@@ -304,16 +304,12 @@ async function handleConfirmingName(phone, message, session) {
 async function notifyWig(phone, session, motivo = '', resumen = '') {
   const wigNumber = process.env.WIG_WHATSAPP_NUMBER;
   if (!wigNumber) {
-    console.warn('WIG_WHATSAPP_NUMBER no configurado.');
-    return { fueraHorario: false };
+    console.error('🚨 WIG_WHATSAPP_NUMBER no configurado — escalación NO entregada.');
+    return { failed: true, reason: 'no_wig_number' };
   }
 
   const customer   = session.customer || {};
   const tempData   = session.tempData  || {};
-  const history    = (session.conversationHistory || []).slice(-8);
-  const transcript = history.length
-    ? history.map(m => `${m.role === 'user' ? '👤' : '🤖'}: ${m.content}`).join('\n')
-    : '(sin historial previo)';
 
   const nombre   = customer.name  || tempData.name  || 'Sin nombre';
   const estado   = customer.state || tempData.state || '';
@@ -332,17 +328,6 @@ async function notifyWig(phone, session, motivo = '', resumen = '') {
   const ubicacion = [estado, ciudad, cp ? `CP: ${cp}` : '']
     .filter(Boolean).join(' | ');
 
-  if (!horarioService.estaEnHorario()) {
-    await colaEscalaciones.agregarEscalacion({
-      phone, nombre, resumen: resumenLimpio || motivo, timestamp: Date.now(),
-    });
-    await sessionManager.updateSession(phone, {
-      tempData: { ...session.tempData, escalacionPendiente: true },
-    });
-    console.log(`📥 [COLA] Fuera de horario — escalación de ${nombre} guardada para después`);
-    return { fueraHorario: true };
-  }
-
   const telMostrar = phone.replace('whatsapp:', '');
   const esUrgente = (motivo || '').toUpperCase().includes('URGENTE') ||
                     (motivo || '').includes('frustrado') ||
@@ -359,29 +344,76 @@ async function notifyWig(phone, session, motivo = '', resumen = '') {
       (ubicacion ? `📍 ${ubicacion}\n` : '') +
       (resumenLimpio ? `📝 ${resumenLimpio}` : '');
 
-  console.log(`📤 Intentando notificar a Wig | to: ${wigNumber} | motivo: ${motivo}`);
+  // ── Ventana de WhatsApp ────────────────────────────────────────────────────
+  // Twilio acepta el mensaje (status:queued, errorCode:null) aunque la ventana de
+  // 24h esté cerrada; la entrega real falla async (error 63016) y nunca la vemos
+  // aquí. Por eso NO confiamos en la respuesta de Twilio para saber si Wig recibió:
+  // usamos su último inbound (registrado en webhookHandler) para estimar la ventana.
+  const VENTANA_MS = 24 * 60 * 60 * 1000;
+  const redis = sessionManager.getRedisClient && sessionManager.getRedisClient();
+  const leerTs = async (key) => {
+    if (!redis) return 0;
+    try { return parseInt((await redis.get(key)) || '0', 10) || 0; } catch (e) { return 0; }
+  };
+  const lastWig = await leerTs('wig:lastInbound');
+  const ventanaWigAbierta = lastWig > 0 && (Date.now() - lastWig) < VENTANA_MS;
+
+  // Intento best-effort de avisar a Wig. Aunque creamos la ventana cerrada lo
+  // mandamos igual: si el timestamp se perdió (Redis reinició) podría entregarse;
+  // si de verdad está cerrada, no se entrega y no cuesta nada.
+  let wigOk = false;
+  console.log(`📤 Notificando a Wig | to: ${wigNumber} | ventana: ${ventanaWigAbierta ? 'abierta' : 'CERRADA'} | motivo: ${motivo}`);
   try {
     const result = await twilioService.sendMessage(wigNumber, msg);
-    console.log(`📲 Wig notificado | sid: ${result.sid} | status: ${result.status} | errorCode: ${result.errorCode ?? 'none'} | errorMsg: ${result.errorMessage ?? 'none'}`);
-    const falloEnvio = !!result.errorCode ||
+    console.log(`📲 Wig | sid: ${result.sid} | status: ${result.status} | errorCode: ${result.errorCode ?? 'none'}`);
+    const falloInmediato = !!result.errorCode ||
       ['failed', 'undelivered'].includes((result.status || '').toLowerCase());
-    if (falloEnvio) {
-      await colaEscalaciones.agregarEscalacion({ phone, nombre, resumen: resumenLimpio || motivo, timestamp: Date.now() });
-      await sessionManager.updateSession(phone, { tempData: { ...session.tempData, escalacionPendiente: true } });
-      console.warn(`⚠️ [COLA] Mensaje a Wig falló (errorCode=${result.errorCode ?? 'n/a'}, status=${result.status}) — escalación de ${nombre} guardada en cola`);
-    }
-    return { fueraHorario: false };
+    wigOk = ventanaWigAbierta && !falloInmediato;
   } catch (err) {
-    console.error(`❌ Error notificando a Wig | code: ${err.code} | status: ${err.status} | msg: ${err.message} | moreInfo: ${err.moreInfo}`);
-    try {
-      await colaEscalaciones.agregarEscalacion({ phone, nombre, resumen: resumenLimpio || motivo, timestamp: Date.now() });
-      await sessionManager.updateSession(phone, { tempData: { ...session.tempData, escalacionPendiente: true } });
-      console.warn(`⚠️ [COLA] Excepción al notificar a Wig — escalación de ${nombre} guardada en cola`);
-    } catch (qErr) {
-      console.error('Error guardando escalación en cola:', qErr.message);
-    }
-    return { fueraHorario: false };
+    console.error(`❌ Error enviando a Wig | code: ${err.code} | msg: ${err.message}`);
   }
+
+  if (wigOk) return { notified: true };
+
+  // ── Wig no confiable (ventana cerrada o fallo): respaldo a Diego + cola ──────
+  console.warn(`🚨 No se pudo asegurar el aviso a Wig (ventana ${ventanaWigAbierta ? 'abierta pero Twilio falló' : 'cerrada'}). Intentando respaldo.`);
+
+  // Siempre dejar la escalación en la cola para que /pendientes la recupere.
+  try {
+    await colaEscalaciones.agregarEscalacion({ phone, nombre, resumen: resumenLimpio || motivo, timestamp: Date.now() });
+  } catch (qErr) {
+    console.error('Error guardando escalación en cola:', qErr.message);
+  }
+
+  const backupNumber = process.env.BACKUP_WHATSAPP_NUMBER;
+  if (backupNumber) {
+    const lastBackup = await leerTs('backup:lastInbound');
+    const ventanaBackupAbierta = lastBackup > 0 && (Date.now() - lastBackup) < VENTANA_MS;
+    if (ventanaBackupAbierta) {
+      const msgBackup =
+        `🚨 *No pude avisar a Wig* (su ventana de WhatsApp está cerrada).\n\n` +
+        `👤 *${nombre}* | ${telMostrar}\n` +
+        (ubicacion ? `📍 ${ubicacion}\n` : '') +
+        (resumenLimpio ? `📝 ${resumenLimpio}\n` : '') +
+        `\nPídele a Wig que le escriba al bot para reabrir su ventana, o atiéndelo tú.`;
+      try {
+        const r = await twilioService.sendMessage(backupNumber, msgBackup);
+        const falloB = !!r.errorCode || ['failed', 'undelivered'].includes((r.status || '').toLowerCase());
+        if (!falloB) {
+          console.warn(`📲 Respaldo: aviso entregado a Diego (Wig no disponible). Cliente: ${nombre}`);
+          return { failed: true, reason: 'ventana_cerrada', backup: true };
+        }
+      } catch (e) {
+        console.error(`❌ Error avisando al respaldo: ${e.message}`);
+      }
+    } else {
+      console.warn(`🚨 Ventana del respaldo (Diego) también cerrada.`);
+    }
+  }
+
+  // Último recurso: nadie recibió el aviso en vivo (queda en la cola → /pendientes).
+  console.error(`🚨🚨 ESCALACIÓN SIN AVISO EN VIVO — ni Wig ni respaldo disponibles. Cliente: ${nombre} | ${telMostrar} | ${resumenLimpio || motivo}. Recuperable con /pendientes.`);
+  return { failed: true, reason: 'ventana_cerrada' };
 }
 
 module.exports = { handleMessage, handleMediaMessage, notifyWig };

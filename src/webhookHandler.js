@@ -64,6 +64,25 @@ async function procesarMensaje(from, body) {
     log.lines.push(`Cliente: ${body}`);
     log.lastActivity = Date.now();
 
+    // Ventana de WhatsApp: CUALQUIER mensaje de Wig o del número de respaldo (comando
+    // o no) reabre su ventana de 24h. Guardamos el timestamp en Redis para que
+    // notifyWig sepa si todavía puede escribirles (ver botLogic.notifyWig).
+    const fromDigits   = from.replace(/\D/g, '').slice(-10);
+    const wigDigits    = (process.env.WIG_WHATSAPP_NUMBER    || '').replace(/\D/g, '').slice(-10);
+    const backupDigits = (process.env.BACKUP_WHATSAPP_NUMBER || '').replace(/\D/g, '').slice(-10);
+    const esWig    = wigDigits    && fromDigits === wigDigits;
+    const esBackup = backupDigits && fromDigits === backupDigits;
+    if (esWig || esBackup) {
+      try {
+        const redis = sessionManager.getRedisClient && sessionManager.getRedisClient();
+        if (redis) {
+          await redis.set(esWig ? 'wig:lastInbound' : 'backup:lastInbound', String(Date.now()));
+        }
+      } catch (e) {
+        console.error('No se pudo registrar ventana de Wig/respaldo:', e.message);
+      }
+    }
+
     // Comandos admin de Wig
     if (await isWigCommand(from, body)) {
       try {
@@ -80,14 +99,10 @@ async function procesarMensaje(from, body) {
       return;
     }
 
-    // Ignorar mensajes no-comando del número de Wig
-    const wigNumber = process.env.WIG_WHATSAPP_NUMBER;
-    const fromNorm = from.replace(/\D/g, '').slice(-10);
-    const wigNorm = (wigNumber || '').replace(/\D/g, '').slice(-10);
-
-    if (fromNorm === wigNorm) {
-      // Es Wig pero no es un comando reconocido — ignorar silenciosamente
-      console.log(`🔧 [WIG] Mensaje no-comando ignorado: ${body.substring(0, 50)}`);
+    // Ignorar mensajes no-comando de Wig o del número de respaldo. No son clientes;
+    // su mensaje ya sirvió para reabrir su ventana de WhatsApp (registrado arriba).
+    if (esWig || esBackup) {
+      console.log(`🔧 [${esWig ? 'WIG' : 'BACKUP'}] Mensaje no-comando ignorado: ${body.substring(0, 50)}`);
       return;
     }
 
