@@ -344,11 +344,16 @@ async function notifyWig(phone, session, motivo = '', resumen = '') {
       (ubicacion ? `📍 ${ubicacion}\n` : '') +
       (resumenLimpio ? `📝 ${resumenLimpio}` : '');
 
-  // ── Ventana de WhatsApp ────────────────────────────────────────────────────
+  // ── Ventana de WhatsApp — 3 estados ─────────────────────────────────────────
   // Twilio acepta el mensaje (status:queued, errorCode:null) aunque la ventana de
   // 24h esté cerrada; la entrega real falla async (error 63016) y nunca la vemos
-  // aquí. Por eso NO confiamos en la respuesta de Twilio para saber si Wig recibió:
-  // usamos su último inbound (registrado en webhookHandler) para estimar la ventana.
+  // aquí. Por eso estimamos la ventana con el último inbound de Wig (registrado en
+  // webhookHandler). Tres estados:
+  //   1. timestamp PRESENTE y <24h → ABIERTA (verdad positiva: Wig escribió hace poco).
+  //   2. timestamp PRESENTE y ≥24h → CERRADA (verdad positiva: no escribe hace >24h).
+  //   3. timestamp AUSENTE / 0     → DESCONOCIDA (cold-start del deploy, restart de
+  //      Redis, o Redis inaccesible). NO asumimos cerrada: caemos al heurístico de
+  //      horario hábil, que es el default confiable que había antes del fix de hoy.
   const VENTANA_MS = 24 * 60 * 60 * 1000;
   const redis = sessionManager.getRedisClient && sessionManager.getRedisClient();
   const leerTs = async (key) => {
@@ -356,13 +361,30 @@ async function notifyWig(phone, session, motivo = '', resumen = '') {
     try { return parseInt((await redis.get(key)) || '0', 10) || 0; } catch (e) { return 0; }
   };
   const lastWig = await leerTs('wig:lastInbound');
-  const ventanaWigAbierta = lastWig > 0 && (Date.now() - lastWig) < VENTANA_MS;
 
-  // Intento best-effort de avisar a Wig. Aunque creamos la ventana cerrada lo
-  // mandamos igual: si el timestamp se perdió (Redis reinició) podría entregarse;
-  // si de verdad está cerrada, no se entrega y no cuesta nada.
+  let ventanaWigAbierta;   // ¿asumimos que el aviso en vivo llegará?
+  let estadoVentana;       // etiqueta para el log
+  if (lastWig > 0) {
+    ventanaWigAbierta = (Date.now() - lastWig) < VENTANA_MS;
+    estadoVentana = ventanaWigAbierta
+      ? `ABIERTA (último inbound hace ${Math.round((Date.now() - lastWig) / 60000)} min)`
+      : `CERRADA (último inbound hace ${Math.round((Date.now() - lastWig) / 3600000)} h)`;
+  } else {
+    ventanaWigAbierta = horarioService.estaEnHorario();
+    estadoVentana = ventanaWigAbierta
+      ? 'DESCONOCIDA (sin dato) → horario hábil → asumo ABIERTA'
+      : 'DESCONOCIDA (sin dato) → fuera de horario → asumo CERRADA';
+  }
+
+  // Razón de fallo según el estado, para devolver al modelo / loggear.
+  const razonFallo = ventanaWigAbierta ? 'envio_fallo'
+    : (lastWig > 0 ? 'ventana_cerrada' : 'fuera_horario_sin_dato');
+
+  // Intento best-effort de avisar a Wig. Lo mandamos siempre (no cuesta si no se
+  // entrega), pero solo lo damos por NOTIFICADO si la ventana se considera abierta
+  // y Twilio no reportó fallo inmediato.
   let wigOk = false;
-  console.log(`📤 Notificando a Wig | to: ${wigNumber} | ventana: ${ventanaWigAbierta ? 'abierta' : 'CERRADA'} | motivo: ${motivo}`);
+  console.log(`📤 Notificando a Wig | to: ${wigNumber} | ventana: ${estadoVentana} | motivo: ${motivo}`);
   try {
     const result = await twilioService.sendMessage(wigNumber, msg);
     console.log(`📲 Wig | sid: ${result.sid} | status: ${result.status} | errorCode: ${result.errorCode ?? 'none'}`);
@@ -376,7 +398,7 @@ async function notifyWig(phone, session, motivo = '', resumen = '') {
   if (wigOk) return { notified: true };
 
   // ── Wig no confiable (ventana cerrada o fallo): respaldo a Diego + cola ──────
-  console.warn(`🚨 No se pudo asegurar el aviso a Wig (ventana ${ventanaWigAbierta ? 'abierta pero Twilio falló' : 'cerrada'}). Intentando respaldo.`);
+  console.warn(`🚨 No se pudo asegurar el aviso a Wig (${estadoVentana} | razón: ${razonFallo}). Intentando respaldo.`);
 
   // Siempre dejar la escalación en la cola para que /pendientes la recupere.
   try {
@@ -391,7 +413,7 @@ async function notifyWig(phone, session, motivo = '', resumen = '') {
     const ventanaBackupAbierta = lastBackup > 0 && (Date.now() - lastBackup) < VENTANA_MS;
     if (ventanaBackupAbierta) {
       const msgBackup =
-        `🚨 *No pude avisar a Wig* (su ventana de WhatsApp está cerrada).\n\n` +
+        `🚨 *No pude confirmar el aviso a Wig* (no recibió o su ventana de WhatsApp está cerrada).\n\n` +
         `👤 *${nombre}* | ${telMostrar}\n` +
         (ubicacion ? `📍 ${ubicacion}\n` : '') +
         (resumenLimpio ? `📝 ${resumenLimpio}\n` : '') +
@@ -401,7 +423,7 @@ async function notifyWig(phone, session, motivo = '', resumen = '') {
         const falloB = !!r.errorCode || ['failed', 'undelivered'].includes((r.status || '').toLowerCase());
         if (!falloB) {
           console.warn(`📲 Respaldo: aviso entregado a Diego (Wig no disponible). Cliente: ${nombre}`);
-          return { failed: true, reason: 'ventana_cerrada', backup: true };
+          return { failed: true, reason: razonFallo, backup: true };
         }
       } catch (e) {
         console.error(`❌ Error avisando al respaldo: ${e.message}`);
@@ -413,7 +435,7 @@ async function notifyWig(phone, session, motivo = '', resumen = '') {
 
   // Último recurso: nadie recibió el aviso en vivo (queda en la cola → /pendientes).
   console.error(`🚨🚨 ESCALACIÓN SIN AVISO EN VIVO — ni Wig ni respaldo disponibles. Cliente: ${nombre} | ${telMostrar} | ${resumenLimpio || motivo}. Recuperable con /pendientes.`);
-  return { failed: true, reason: 'ventana_cerrada' };
+  return { failed: true, reason: razonFallo };
 }
 
 module.exports = { handleMessage, handleMediaMessage, notifyWig };
