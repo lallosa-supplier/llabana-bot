@@ -93,7 +93,7 @@ Usa las herramientas para ACTUAR (consultar zona, registrar, escalar). Lo que es
 const TOOLS = [
   {
     name: 'consultar_zona',
-    description: 'Determina si un CP mexicano está en zona de entrega directa (centro CDMX o cerca de Ecatepec) o si solo aplica paquetería. Llama esto SIEMPRE que tengas el CP, antes de decidir cómo atender.',
+    description: 'Informativo: dado un CP mexicano, devuelve su estado/ciudad y si queda CERCA de Ecatepec (para poder ofrecerle recoger en el expendio). Llámalo cuando tengas el CP. NO cambia cómo se cierra la venta ni implica escalar: el cierre por defecto es la tienda en línea para TODOS, viva donde viva; estar cerca de Ecatepec solo agrega la opción de recoger en el expendio.',
     input_schema: { type: 'object', properties: { cp: { type: 'string', description: 'Código postal de 5 dígitos' } }, required: ['cp'] },
   },
   {
@@ -107,7 +107,7 @@ const TOOLS = [
   },
   {
     name: 'escalar_a_wig',
-    description: 'Pasa la conversación a un asesor humano (Wig). SOLO cuando: el cliente está en zona de entrega directa; hay queja/enojo/problema con un pedido; o pide hablar con una persona. Incluye un resumen completo.',
+    description: 'Pasa la conversación a un asesor humano (Wig). SOLO cuando: el cliente quiere mayoreo/distribuidor de 12 toneladas o más; hay queja/enojo/problema con un pedido; el cliente pide hablar con una persona; o es un cliente actual con servicio establecido (para seguimiento). La ZONA del cliente NO es motivo para escalar: un cliente normal de CDMX/Edomex se cierra con la tienda en línea como cualquiera. Incluye un resumen completo.',
     input_schema: { type: 'object', properties: {
       motivo: { type: 'string', description: 'Razón corta' },
       resumen: { type: 'string', description: 'Resumen de la conversación y datos del cliente' },
