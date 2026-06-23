@@ -26,6 +26,15 @@ const MESES_FIJOS = {
   '2026-05': { railway: 5, twilio: 20.35, claude: 66.95 },
 };
 
+// Base fija a SUMAR al Claude medido del mes EN CURSO (no lo reemplaza ni lo
+// congela: la medición por BOT_API_KEY_ID sigue creciendo y se le añade esta base).
+// Útil cuando parte del gasto del mes ocurrió en una API key distinta a la que mide
+// BOT_API_KEY_ID. Junio 2026: la key vieja "Chatbot La Llosa 2" gastó $73.23 antes
+// de la rotación (1-15 jun) y ya no es medible. NO va en MESES_FIJOS.
+const CLAUDE_BASE_AJUSTE = {
+  '2026-06': 73.23,
+};
+
 // ── Helpers de fecha ──────────────────────────────────────────────────────────
 
 /**
@@ -547,6 +556,15 @@ async function syncAll(monthsBack = 6, opts = {}) {
         claudeStatus = cr.status; claudeDebug = cr;
       }
       catch (e) { claudeStatus = `error: ${e.message}`; console.error(`Anthropic ${m.ym} error: ${e.message}`); }
+
+      // Base fija de gasto en una key anterior (no medible por BOT_API_KEY_ID).
+      // Solo si la medición fue exitosa (claudeUsd numérico): si falló (null),
+      // dejamos null para que upsertMonth preserve el valor previo de la celda
+      // (que ya incluye esta base de un sync anterior) y no lo pisemos con solo la base.
+      if (claudeUsd != null && CLAUDE_BASE_AJUSTE[m.ym]) {
+        claudeUsd = +(claudeUsd + CLAUDE_BASE_AJUSTE[m.ym]).toFixed(4);
+        console.log(`➕ base ${m.ym}: +$${CLAUDE_BASE_AJUSTE[m.ym]} (key vieja, pre-rotación) → Claude $${claudeUsd}`);
+      }
 
       const res = await upsertMonth(m.ym, {
         railway: RATES.railwayMonthly, twilioUsd, claudeUsd,
