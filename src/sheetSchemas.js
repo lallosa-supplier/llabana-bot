@@ -41,23 +41,6 @@ const SUCURSALES_SCHEMA = {
 };
 
 /**
- * Rutas Reparto (Delivery routes)
- */
-const RUTAS_SCHEMA = {
-  tabs: 'Rutas Reparto',
-  columns: {
-    ROUTE_ID: 0,
-    DESCRIPTION: 1,
-    COVERAGE_CP_RANGE: 2,
-    STATE: 3,
-    FREQUENCY: 4,
-    COST: 5,
-  },
-  headerRow: 1,
-  startRow: 2,
-};
-
-/**
  * Seguimientos 24h (24-hour follow-ups)
  */
 const SEGUIMIENTOS_SCHEMA = {
@@ -155,7 +138,6 @@ function buildRow(schema, data) {
 module.exports = {
   MAESTRO_SCHEMA,
   SUCURSALES_SCHEMA,
-  RUTAS_SCHEMA,
   SEGUIMIENTOS_SCHEMA,
   TRANSCRIPCIONES_SCHEMA,
   PRODUCTOS_SCHEMA,

@@ -35,9 +35,6 @@
  *   I (8): Coordenadas
  *   J (9): Notas bot
  *
- * "3 Rutas Reparto" (vacía, se llenará después)
- *   A: Colonia | B: Ciudad | C: Ruta | D: Días de Reparto
- *
  * "4 Seguimientos 24h"
  *   A: Teléfono | B: Nombre | C: Fecha/Hora | D: Motivo | E: Estado | F: Notas
  * ═══════════════════════════════════════════════════════════════════
@@ -52,7 +49,6 @@ const CACHE_TTL = 10 * 60 * 1000;
 const SPREADSHEET_ID   = process.env.GOOGLE_SHEETS_ID;
 const SHEET_BASE       = '1 Base Maestra';
 const SHEET_SUCURSALES = '2 Sucursales';
-const SHEET_RUTAS      = '3 Rutas Reparto';
 const SHEET_SEGUIM     = '4 Seguimientos 24h';
 
 // Índices columnas Base Maestra (0-indexed)
@@ -735,45 +731,6 @@ async function findCityInSucursales(city) {
   }
 }
 
-// ── Rutas de Reparto ──────────────────────────────────────────────────────────
-
-/**
- * Busca una colonia en "3 Rutas Reparto".
- * La pestaña está vacía por ahora; retorna null hasta que se llene.
- * Columnas esperadas: A: Colonia | B: Ciudad | C: Ruta | D: Días
- */
-async function findColoniaInRutas(colonia) {
-  try {
-    const sheets = await getSheets();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_RUTAS}!A:D`,
-    });
-
-    const rows = res.data.values || [];
-    if (rows.length <= 1) return null; // vacía
-
-    const search = normalizeText(colonia);
-
-    for (const row of rows.slice(1)) {
-      if (!row[0]) continue;
-      const rowColonia = normalizeText(row[0]);
-      if (rowColonia === search || rowColonia.includes(search) || search.includes(rowColonia)) {
-        return {
-          colonia: row[0],
-          ciudad:  row[1] || '',
-          ruta:    row[2] || '',
-          dias:    row[3] || '',
-        };
-      }
-    }
-    return null;
-  } catch (err) {
-    console.error('sheetsService.findColoniaInRutas error:', err.message);
-    return null;
-  }
-}
-
 // ── Seguimientos 24h ──────────────────────────────────────────────────────────
 
 /**
@@ -876,6 +833,5 @@ module.exports = {
   appendTag,
   updateEmailMarketing,
   findCityInSucursales,
-  findColoniaInRutas,
   addSeguimiento,
 };

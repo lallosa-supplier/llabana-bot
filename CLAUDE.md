@@ -226,7 +226,6 @@ Mensaje → ¿número conocido en Sheets?
 ```
 1 Base Maestra      — ~3,950+ contactos
 2 Sucursales        — 36 sucursales (busca aquí cuando cliente pregunta por ciudad)
-3 Rutas Reparto     — VACÍA, pendiente llenar con Gerardo
 4 Seguimientos 24h  — Follow-ups registrados
 5 Transcripciones   — Historial conversaciones (límite 48k chars por celda)
 6 FAQs              — Base de conocimiento

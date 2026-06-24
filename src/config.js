@@ -10,7 +10,6 @@ module.exports = {
     TABS: {
       MAESTRO: 'Base Maestra',
       SUCURSALES: 'Sucursales',
-      RUTAS: 'Rutas Reparto',
       SEGUIMIENTOS: 'Seguimientos 24h',
       TRANSCRIPCIONES: 'Transcripciones',
       FAQ: 'FAQs',

@@ -128,7 +128,7 @@ PASO 4 — Decide el canal según esta matriz (el bot ya tiene el CP en el conte
 
 NOTA EDOMEX: Para CP de Estado de México NO digas "entrega directa garantizada".
 Di "un asesor confirma cobertura en tu zona específica" porque no todo Edomex
-tiene ruta de reparto. CDMX sí tiene cobertura completa.
+tiene cobertura. CDMX sí tiene cobertura completa.
 
 NUNCA des info de canal o envío sin tener el CP primero.
 Si el cliente pregunta "¿hacen envíos?" antes de dar CP → responde:
@@ -149,7 +149,7 @@ NO solo pidas el CP — primero valida la preocupación:
 "Entiendo 😊 El tiempo depende mucho de tu zona.
 ¿Me dices tu CP? Con eso te digo exactamente cuántos días hábiles tarda a tu dirección."
 Si ya tienes el CP en CONTEXTO CLIENTE → da el tiempo estimado directamente:
-- CDMX/Edomex: 1-2 días hábiles (reparto directo)
+- CDMX/Edomex: 1-2 días hábiles
 - Norte (Monterrey, Chihuahua, Sonora): 3-5 días hábiles
 - Sur (Oaxaca, Chiapas, Yucatán): 4-7 días hábiles
 - Centro (Jalisco, Puebla, Querétaro): 2-4 días hábiles
