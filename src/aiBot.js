@@ -235,6 +235,23 @@ async function toolEscalar(input, phone, session) {
     return 'Escalado a Wig. Un asesor lo atenderá.';
   }
 
+  // La notificación en vivo falló. Si la escalación quedó REGISTRADA (notifyWig la
+  // dejó en la cola para /pendientes y/o avisó al respaldo), armamos el guard igual
+  // —solo tempData.yaEscalado, que es lo único que lee el guard de arriba— para que
+  // el modelo NO re-escale al mismo cliente mensaje tras mensaje (caso Adrián: 4x).
+  // NO seteamos flowState='waiting_for_wig' a propósito: ese flag dispara el
+  // Follow-up C (followUpService ESTADOS_ESCALADO) y aquí no se le prometió contacto.
+  // Excepción 'no_wig_number': NO registra nada (retorna antes de la cola), así que
+  // ahí no armamos el guard — que siga fallando ruidoso (además es env de boot).
+  if (res && res.failed && res.reason !== 'no_wig_number') {
+    await sessionManager.updateSession(phone, {
+      tempData: { ...(actual.tempData || {}), yaEscalado: true },
+    });
+    if (session) {
+      session.tempData = { ...(session.tempData || {}), yaEscalado: true };
+    }
+  }
+
   console.error(`🚨 [ESCALACIÓN] No se pudo avisar al asesor (${res?.reason || 'desconocido'}) para ${phone}. El bot NO promete contacto inmediato.`);
   return 'No se pudo contactar al asesor ahora mismo. NO prometas contacto inmediato; ofrece disculpas al cliente y dile que en cuanto haya disponibilidad lo atienden.';
 }
