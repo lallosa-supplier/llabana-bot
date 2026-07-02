@@ -32,6 +32,8 @@ REGLA DE ORO: Lee SIEMPRE todo el historial de la conversación antes de respond
 
 MISMA PERSONA (continuidad): El número de WhatsApp identifica a la persona — un mismo número es SIEMPRE la misma persona. Si el cliente ya había escrito antes en la conversación, retómalo con naturalidad ("Claro, sobre el [producto] que veías…") usando el historial. NUNCA le preguntes si es la misma persona ("¿eres el mismo que preguntó hace rato?"), ni dudes de su identidad, ni le pidas que confirme que es él: ya sabes que lo es.
 
+RE-PREGUNTAS: si el cliente vuelve a preguntar un dato que ya diste (precio, etapa, etc.), repítelo con calidez como si fuera la primera vez. NUNCA señales que ya lo habías dicho ("ya te lo mencioné", "como te dije", "te repito") — suena cortante. Solo da el dato de nuevo, amable.
+
 FORMATO DE MENSAJES (reglas duras, sin excepción):
 - UNA sola pregunta por mensaje: cada respuesta termina con UNA pregunta como máximo. NUNCA hagas dos preguntas en el mismo mensaje.
 - Negrita de WhatsApp con UN solo asterisco: *así*. NUNCA uses dobles asteriscos (**así**) — WhatsApp los muestra literales y se ve mal. Usa negrita con moderación.
@@ -49,7 +51,13 @@ CÓMO CONVERSAS (UNA COSA A LA VEZ — nunca hagas dos preguntas en el mismo men
 6. Vuelve a llamar registrar_o_actualizar_cliente cuando tengas su CP. Todo debe fluir como plática, nunca como interrogatorio.
 
 EMBUDO DE APERTURA (filtros en orden, ágiles y cordiales — UNA pregunta a la vez, NUNCA interrogatorio). Sirve para frenar a tiempo a quien no podemos atender y no gastar asesoría de balde:
-FILTRO 1 — ¿Desde México?: Usa la LADA del número como indicio. +52 = México: NO preguntes nada, sigue normal. Si la lada es EXTRANJERA (+1, +51, +57, etc.), pregunta con naturalidad si nos escribe desde México (a veces son clientes EN México con número de otro país). Si confirma que está FUERA de México, aplica ENVÍOS INTERNACIONALES (abajo): solo entregamos dentro de México; como alternativa, entregar en un punto de México y de ahí el envío internacional corre por su cuenta. NO te desgastes asesorando si no hay forma de entregar.
+ORDEN DEL EMBUDO (obligatorio):
+1) Saludo + nombre completo.
+2) UBICACIÓN — ESTADO PRIMERO. Antes de asesorar a fondo o dar precios, pregunta con calidez de qué ESTADO nos escribe (filtro de factibilidad, no interrogatorio).
+3) Solo cuando ya sabes que es viable y es CLIENTE FINAL (compra para sus animales): asesora y da precio.
+4) El CÓDIGO POSTAL se pide DESPUÉS, solo al cliente final que va a comprar y necesita envío (nunca antes, nunca a quien vamos a rechazar).
+CUIDADO CRÍTICO (no cerrar puerta por error): "estado primero" existe para NO gastar asesoría con REVENDEDORES foráneos, NO para rechazar clientes finales. El CLIENTE FINAL que compra para SUS animales se atiende SIEMPRE, viva donde viva: si está fuera de la zona local va a TIENDA EN LÍNEA NACIONAL — jamás se le cierra la puerta. La puerta cordial SOLO se cierra a REVENDEDORES/DISTRIBUIDORES fuera de CDMX/Edomex.
+FILTRO 1 — ¿DESDE MÉXICO?: cuando un CONTEXTO INTERNO te indique que el número es de lada internacional, confirma con calidez si el cliente está en México antes de asesorar a fondo o dar precios. (Tú no ves el número; te llega como contexto interno solo cuando aplica.) Si el cliente está fuera de México, aplica ENVÍOS INTERNACIONALES. Recuerda: el cliente final foráneo se atiende con tienda nacional; la puerta solo se cierra a revendedores foráneos.
 FILTRO 2 — Nombre: como ya se indica arriba (nombre completo, sin trabarse).
 FILTRO 3 — Ubicación (ESTADO primero, CP después): El primer dato de ubicación que pides es el ESTADO, no el CP — es el filtro más barato y ágil. Pídelo con naturalidad, enmarcado como ayudarle mejor, no como trámite. Ej: "Claro, con gusto te asesoro. ¿Desde qué estado nos escribes?". Con el estado ya defines factibilidad y ruteo: si es de México o del extranjero, y si un revendedor está en zona (CDMX/Edomex) o fuera. El CÓDIGO POSTAL se pide MÁS ADELANTE y SOLO cuando ya quedó claro que es CLIENTE FINAL que va a comprar (lo necesita la tienda para calcular el envío, o para ver si está cerca del expendio). NO pidas CP a quien vas a rechazar (revendedor foráneo) ni antes de saber si es cliente viable — ahorra pasos y tokens.
 RUTEO (según QUÉ busca + su ubicación):
@@ -280,6 +288,46 @@ async function ejecutarHerramienta(nombre, input, phone, session) {
   }
 }
 
+// Arma notas de contexto interno (no cacheadas) según el número y el texto.
+// Va como bloque system APARTE del cacheado → no rompe prompt caching.
+function buildDynamicContext(phone, messageBody) {
+  const notas = [];
+  const num = String(phone || '').replace(/^whatsapp:/, '').trim();
+  const esMexico = num.startsWith('+52');
+  const esInternacional = num.startsWith('+') && !esMexico;
+
+  // PAÍS (FILTRO 1): la lada no es +52 → probablemente fuera de México.
+  if (esInternacional) {
+    notas.push(
+      'El número de este cliente tiene lada internacional (no +52), así que ' +
+      'PROBABLEMENTE está fuera de México. Antes de asesorar a fondo o dar precios, ' +
+      'confirma con calidez si se encuentra en México (FILTRO 1). NUNCA menciones ' +
+      'su lada, su país, ni que lo sabes por el número. Si NO está en México, aplica ' +
+      'ENVÍOS INTERNACIONALES (solo entregamos dentro de México; alternativa: entregar ' +
+      'en un punto de México y de ahí el envío corre por su cuenta) y NO escales. ' +
+      'IMPORTANTE: si es CLIENTE FINAL que compra para sus animales, atiéndelo con ' +
+      'TIENDA EN LÍNEA NACIONAL — no le cierres la puerta; la puerta solo se cierra a ' +
+      'REVENDEDORES foráneos.'
+    );
+  }
+
+  // REGALO: intención de ir EN PERSONA al expendio (recordatorio, no orden).
+  const enPersona = /(voy a (pasar|ir)|puedo ir|quiero ir|paso por|recojo|recoger|d[oó]nde (est[aá]n|queda|recojo)|c[oó]mo llego|ubicaci[oó]n|direcci[oó]n|mapa|en persona|a la sucursal|al expendio|(est[aá]|queda) cerca)/i
+    .test(String(messageBody || ''));
+  if (enPersona) {
+    notas.push(
+      'El cliente parece mostrar intención de ir EN PERSONA al expendio. Si de verdad ' +
+      'va en persona (NO tienda en línea, NO retiro, NO reparto), recuérdale de forma ' +
+      'natural el REGALO al llegar, siguiendo las reglas del bloque REGALO EN EL EXPENDIO. ' +
+      'Si en realidad es tienda en línea / retiro / reparto, NO ofrezcas el regalo.'
+    );
+  }
+
+  if (notas.length === 0) return null;
+  return '━━━ CONTEXTO INTERNO (no lo menciones al cliente) ━━━\n' +
+         notas.map(n => '• ' + n).join('\n');
+}
+
 async function buildSystem() {
   let kb = '', productos = '';
   try { kb = await knowledgeService.getKnowledgeBase(); } catch (e) {}
@@ -308,6 +356,11 @@ async function handleMessageIA(phone, messageBody) {
   const toolsCached = TOOLS.map((t, i) =>
     i === TOOLS.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t
   );
+
+  // Contexto interno dinámico (país por lada + empujón de regalo). Va como SEGUNDO
+  // bloque de system SIN cache_control → no rompe el cache del bloque grande de arriba.
+  const dyn = buildDynamicContext(phone, messageBody);
+  if (dyn) systemBlocks.push({ type: 'text', text: dyn });
 
   for (let i = 0; i < 5; i++) {
     const response = await client.messages.create({
