@@ -331,7 +331,7 @@ async function registerCustomer(data) {
     range: `${SHEET_BASE}!A:S`,
     valueInputOption: 'USER_ENTERED',
     resource: { values: [row] },
-  });
+  }, { timeout: 10000 }); // gaxios: falla rápido si Sheets se cuelga (no colgar el turno)
 
   // Extraer el rowIndex de la respuesta para permitir actualizaciones posteriores
   // updatedRange tiene formato "1 Base Maestra!A3520:Q3520"
@@ -412,7 +412,7 @@ async function updateOrderData(rowIndex, { totalOrders, totalSpent, segmento, fe
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: SPREADSHEET_ID,
       resource: { valueInputOption: 'USER_ENTERED', data },
-    });
+    }, { timeout: 10000 }); // gaxios: falla rápido si Sheets se cuelga (no colgar el turno)
 
     // ✅ INVALIDAR CACHÉ: si se actualiza customer data, limpiar su entrada cacheada
     if (phone) {

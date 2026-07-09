@@ -41,7 +41,7 @@ async function getKnowledgeBase() {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SHEET_FAQS}!A:B`,
-    });
+    }, { timeout: 10000 }); // no colgar buildSystem si Sheets se cae
     const rows = (res.data.values || []).slice(1); // skip header
     const text = rows
       .filter(r => r[0] && r[1])
@@ -76,7 +76,7 @@ async function getProductosPorEspecie(query) {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SHEET_PRODUCTOS}!A:L`,
-    });
+    }, { timeout: 10000 }); // no colgar el hot-path si Sheets se cae
     const rows = (res.data.values || []).slice(1);
     // Normalizar query y dividir en palabras individuales (>2 chars)
     const qNorm = normalizeText(query);
@@ -158,7 +158,7 @@ async function getAllProductos() {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SHEET_PRODUCTOS}!A:K`,
-    });
+    }, { timeout: 10000 }); // no colgar buildSystem si Sheets se cae
     const rows = (res.data.values || []).slice(1);
     const texto = rows
       .filter(r => r[1])

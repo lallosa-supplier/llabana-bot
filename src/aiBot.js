@@ -3,7 +3,9 @@ const sessionManager  = require('./sessionManager');
 const sheetsService   = require('./sheetsService');
 const knowledgeService = require('./knowledgeService');
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// timeout 60s + 1 reintento: un Claude lento falla acotado y no retiene el lock minutos
+// (el default del SDK son 10 min × 2 reintentos). No cambia el prompt ni el caché.
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000, maxRetries: 1 });
 
 const ESTADOS_ENTREGA_DIRECTA = ['ciudad de mexico', 'estado de mexico'];
 
