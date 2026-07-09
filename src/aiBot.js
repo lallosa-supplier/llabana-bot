@@ -292,8 +292,18 @@ async function ejecutarHerramienta(nombre, input, phone, session) {
 
 // Arma notas de contexto interno (no cacheadas) según el número y el texto.
 // Va como bloque system APARTE del cacheado → no rompe prompt caching.
-function buildDynamicContext(phone, messageBody) {
+function buildDynamicContext(phone, messageBody, customer) {
   const notas = [];
+
+  // CLIENTE REGISTRADO: si ya conocemos su nombre, recordárselo al modelo para que
+  // NO lo vuelva a pedir (sembrado al arranque desde la Base Maestra si la sesión no lo traía).
+  if (customer && customer.name) {
+    notas.push(
+      `Este cliente YA está registrado y se llama ${customer.name}. Salúdalo por su nombre ` +
+      'con naturalidad y NO le vuelvas a pedir el nombre. Continúa la atención directo.'
+    );
+  }
+
   const num = String(phone || '').replace(/^whatsapp:/, '').trim();
   const esMexico = num.startsWith('+52');
   const esInternacional = num.startsWith('+') && !esMexico;
@@ -344,6 +354,21 @@ async function handleMessageIA(phone, messageBody) {
   const history = session.conversationHistory || [];
   history.push({ role: 'user', content: messageBody });
 
+  // Reconocer al cliente que vuelve: si la sesión no trae nombre (expiró o se perdió
+  // Redis), búscalo en la Base Maestra por teléfono y siémbralo en la sesión. Solo
+  // corre cuando falta el nombre (no cada turno). Tolerante a error: si falla, sigue.
+  if (!session.customer || !session.customer.name) {
+    try {
+      const existente = await sheetsService.findCustomer(phone);
+      if (existente && existente.name) {
+        session.customer = { ...(session.customer || {}), name: existente.name };
+        await sessionManager.updateSession(phone, { customer: session.customer });
+      }
+    } catch (err) {
+      console.error('findCustomer al arranque falló (sigo sin cliente):', err.message);
+    }
+  }
+
   const system = await buildSystem();
   let messages = history.slice(-20);
   let finalText = '';
@@ -361,7 +386,7 @@ async function handleMessageIA(phone, messageBody) {
 
   // Contexto interno dinámico (país por lada + empujón de regalo). Va como SEGUNDO
   // bloque de system SIN cache_control → no rompe el cache del bloque grande de arriba.
-  const dyn = buildDynamicContext(phone, messageBody);
+  const dyn = buildDynamicContext(phone, messageBody, session.customer);
   if (dyn) systemBlocks.push({ type: 'text', text: dyn });
 
   for (let i = 0; i < 5; i++) {
