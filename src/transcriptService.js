@@ -79,59 +79,72 @@ async function getTranscripts() {
 }
 
 async function getExistingTranscript(telefono) {
-  const sheets = getSheets();
-  const tel10 = telefono.replace('whatsapp:', '').replace(/\D/g, '').slice(-10);
+  // No-crítico (solo dashboard): con timeout para no colgarse si Sheets no responde,
+  // y try/catch para que un fallo nunca propague al flujo del mensaje.
+  try {
+    const sheets = getSheets();
+    const tel10 = telefono.replace('whatsapp:', '').replace(/\D/g, '').slice(-10);
 
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${SHEET}!A2:D`,
-  });
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET}!A2:D`,
+    }, { timeout: 10000 }); // gaxios: falla rápido si Sheets se cuelga
 
-  const rows = res.data.values || [];
-  const row = rows.find(r => (r[2] || '').replace(/\D/g, '').slice(-10) === tel10);
-  return row ? (row[3] || '') : '';
+    const rows = res.data.values || [];
+    const row = rows.find(r => (r[2] || '').replace(/\D/g, '').slice(-10) === tel10);
+    return row ? (row[3] || '') : '';
+  } catch (err) {
+    console.error('transcriptService.getExistingTranscript (no-crítico):', err.message);
+    return '';
+  }
 }
 
 async function updateTranscript(telefono, nombre, transcript) {
-  const sheets = getSheets();
-  const telefono_clean = telefono.replace('whatsapp:', '').replace(/^\+?52/, '');
+  // No-crítico (solo dashboard): timeout en todas las llamadas a Sheets + try/catch
+  // para que un fallo/cuelgue de escritura nunca propague al flujo del mensaje.
+  try {
+    const sheets = getSheets();
+    const telefono_clean = telefono.replace('whatsapp:', '').replace(/^\+?52/, '');
 
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${SHEET}!A2:D`,
-  });
-
-  const rows = res.data.values || [];
-  const rowIndex = rows.findIndex(r => (r[2] || '').replace(/^\+?52/, '').replace(/\D/g, '').slice(-10) === telefono_clean.replace(/\D/g, '').slice(-10));
-
-  const fecha = new Date().toLocaleString('es-MX', {
-    timeZone: 'America/Mexico_City',
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', hour12: false
-  });
-
-  if (rowIndex !== -1) {
-    const sheetRow = rowIndex + 2; // +1 por header, +1 por base-1
-    // Usar el nombre que ya existe en Sheets si el nuevo llega vacío
-    const nombreFinal = nombre || rows[rowIndex][1] || '';
-    await sheets.spreadsheets.values.update({
+    const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET}!A${sheetRow}:D${sheetRow}`,
-      valueInputOption: 'RAW',
-      requestBody: {
-        values: [[fecha, nombreFinal, rows[rowIndex][2] || '', truncarTranscript(transcript)]]
-      }
+      range: `${SHEET}!A2:D`,
+    }, { timeout: 10000 });
+
+    const rows = res.data.values || [];
+    const rowIndex = rows.findIndex(r => (r[2] || '').replace(/^\+?52/, '').replace(/\D/g, '').slice(-10) === telefono_clean.replace(/\D/g, '').slice(-10));
+
+    const fecha = new Date().toLocaleString('es-MX', {
+      timeZone: 'America/Mexico_City',
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: false
     });
-  } else {
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET}!A:D`,
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: {
-        values: [[fecha, nombre || '', telefono, truncarTranscript(transcript)]]
-      }
-    });
+
+    if (rowIndex !== -1) {
+      const sheetRow = rowIndex + 2; // +1 por header, +1 por base-1
+      // Usar el nombre que ya existe en Sheets si el nuevo llega vacío
+      const nombreFinal = nombre || rows[rowIndex][1] || '';
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${SHEET}!A${sheetRow}:D${sheetRow}`,
+        valueInputOption: 'RAW',
+        requestBody: {
+          values: [[fecha, nombreFinal, rows[rowIndex][2] || '', truncarTranscript(transcript)]]
+        }
+      }, { timeout: 10000 });
+    } else {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${SHEET}!A:D`,
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: {
+          values: [[fecha, nombre || '', telefono, truncarTranscript(transcript)]]
+        }
+      }, { timeout: 10000 });
+    }
+  } catch (err) {
+    console.error('transcriptService.updateTranscript (no-crítico):', err.message);
   }
 }
 

@@ -48,6 +48,38 @@ const pendingMessages = new Map();
 // Lock: evita procesamiento paralelo del mismo número
 const processingLocks = new Map();
 
+// Transcripción para el dashboard de Wig — NO-crítica. Corre en SEGUNDO PLANO (fire-and-
+// forget) con su propio try/catch: nunca bloquea la respuesta al cliente, nunca retiene el
+// lock, y un fallo/cuelgue de Sheets (ya acotado por timeout en transcriptService) jamás
+// propaga al flujo del mensaje. Se llama DESPUÉS de responder al cliente.
+async function grabarTranscripcion(from, body, reply) {
+  try {
+    if (!chatLogs.has(from)) {
+      const previo = await getExistingTranscript(from); // timeout-guarded, devuelve '' si falla
+      const lines = previo ? previo.split('\n').filter(Boolean) : [];
+      chatLogs.set(from, { lines, lastActivity: Date.now() });
+    }
+    const log = chatLogs.get(from);
+    log.lines.push(`Cliente: ${body}`);
+    log.lines.push(`Bot: ${reply}`);
+    log.lastActivity = Date.now();
+
+    let nombre = '';
+    try {
+      const session = await sessionManager.getSession(from);
+      nombre = session?.customer?.name || session?.tempData?.name || '';
+      if (!nombre) {
+        const maestro = await sheetsService.findCustomer(from); // findCustomer ya tiene timeout 10s
+        if (maestro?.name) nombre = maestro.name;
+      }
+    } catch (e) { /* nombre queda ''; no bloquea */ }
+
+    await updateTranscript(from.replace('whatsapp:', ''), nombre, log.lines.join('\n'));
+  } catch (err) {
+    console.error('📝 Transcripción (no-crítica) falló, sigo:', err.message);
+  }
+}
+
 async function procesarMensaje(from, body) {
   if (processingLocks.has(from)) {
     console.log(`⏳ Mensaje de ${from} ignorado — procesamiento en curso`);
@@ -55,15 +87,6 @@ async function procesarMensaje(from, body) {
   }
   processingLocks.set(from, true);
   try {
-    if (!chatLogs.has(from)) {
-      const previo = await getExistingTranscript(from);
-      const lines = previo ? previo.split('\n').filter(Boolean) : [];
-      chatLogs.set(from, { lines, lastActivity: Date.now() });
-    }
-    const log = chatLogs.get(from);
-    log.lines.push(`Cliente: ${body}`);
-    log.lastActivity = Date.now();
-
     // Ventana de WhatsApp: CUALQUIER mensaje de Wig o del número de respaldo (comando
     // o no) reabre su ventana de 24h. Guardamos el timestamp en Redis para que
     // notifyWig sepa si todavía puede escribirles (ver botLogic.notifyWig).
@@ -106,24 +129,14 @@ async function procesarMensaje(from, body) {
       return;
     }
 
+    // ── Lo ÚNICO crítico: atender al cliente ──
     const reply = await botLogic.handleMessage(from, body);
     await twilioService.sendMessage(from, reply);
-
-    log.lines.push(`Bot: ${reply}`);
     console.log(`📤 [${from}]: ${reply.substring(0, 120)}${reply.length > 120 ? '…' : ''}`);
 
-    const session = await sessionManager.getSession(from);
-    let nombre = session?.customer?.name || session?.tempData?.name || '';
-    if (!nombre) {
-      try {
-        const maestro = await sheetsService.findCustomer(from);
-        if (maestro?.name) nombre = maestro.name;
-      } catch (e) {
-        console.error('No se pudo buscar nombre en maestro para transcript:', e.message);
-      }
-    }
-    const telefono = from.replace('whatsapp:', '');
-    await updateTranscript(telefono, nombre, log.lines.join('\n'));
+    // Transcripción (dashboard): fire-and-forget — NO se espera, NO retiene el lock,
+    // NO puede colgar el flujo. Un fallo de Sheets aquí es inofensivo.
+    grabarTranscripcion(from, body, reply).catch(() => {});
   } catch (err) {
     console.error(`❌ Error procesando mensaje de ${from}:`, err);
     try {
@@ -186,16 +199,10 @@ async function webhookHandler(req, res) {
 
   console.log(`📨 [${from}]: ${body}`);
 
-  // Registrar mensaje individual en el log antes del debounce
-  if (!chatLogs.has(from)) {
-    try {
-      const previo = await getExistingTranscript(from);
-      const lines = previo ? previo.split('\n').filter(Boolean) : [];
-      if (!chatLogs.has(from)) chatLogs.set(from, { lines, lastActivity: Date.now() });
-    } catch (err) {
-      chatLogs.set(from, { lines: [], lastActivity: Date.now() });
-    }
-  }
+  // NOTA: la transcripción (chatLogs/Sheets) ya NO se toca aquí. Antes había un
+  // `await getExistingTranscript` sin timeout ANTES del debounce que, si Sheets se
+  // colgaba, dropeaba el mensaje sin error. Ahora la transcripción corre en segundo
+  // plano dentro de procesarMensaje (grabarTranscripcion), fuera del camino crítico.
 
   // Debounce: acumular mensajes y procesar tras 3s de silencio
   const pending = pendingMessages.get(from) || { timer: null, messages: [] };
