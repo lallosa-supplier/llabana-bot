@@ -150,7 +150,9 @@ const TOOLS = [
     name: 'registrar_o_actualizar_cliente',
     description: 'Guarda o actualiza al cliente en la base. Úsalo en cuanto tengas nombre y apellido, y otra vez cuando tengas CP o definas su segmento.',
     input_schema: { type: 'object', properties: {
-      nombre: { type: 'string' }, apellido: { type: 'string' }, cp: { type: 'string' },
+      nombre: { type: 'string', description: 'Solo el nombre de pila del cliente, tal como él lo dijo. NUNCA una frase, una pregunta ni texto de tu propia respuesta. Si no estás seguro de cuál es su nombre, pregúntale antes de llamar esta tool.' },
+      apellido: { type: 'string', description: 'Solo el apellido del cliente. NUNCA una frase ni texto de tu propia respuesta.' },
+      cp: { type: 'string' },
       segmento: { type: 'string', description: 'Cliente final | Mayoreo fuera de zona | Cliente actual | Lead frío' },
       notas: { type: 'string', description: 'Qué pidió o detalle relevante' },
     }, required: [] },
@@ -181,8 +183,31 @@ async function toolConsultarZona(cp) {
   return JSON.stringify({ zona: entrega ? 'cerca_ecatepec' : 'lejos', estado, ciudad });
 }
 
+// Red de seguridad conservadora para el nombre que el modelo manda a registrar.
+// Criterio: ante la duda, ACEPTAR. Solo rechaza lo que claramente NO es un nombre de
+// persona (frases, preguntas, URLs, texto larguísimo) — p.ej. cuando el modelo pega su
+// propia respuesta como nombre. NO rechaza compuestos largos, partículas, acentos,
+// apóstrofes ni el punto ("Ma.", "Jr."). Un rechazo no borra datos: el bot confirma.
+function esNombreValido(nombre) {
+  const n = String(nombre || '').trim();
+  if (!n) return false;                                          // vacío
+  if (n.length > 60) return false;                              // demasiado largo para un nombre
+  if (/[?¿:!¡]/.test(n)) return false;                          // pregunta/exclamación/dos puntos → es una frase
+  if (/https?:\/\/|www\./i.test(n)) return false;               // URL
+  if (n.split(/\s+/).filter(Boolean).length > 8) return false;  // demasiadas palabras → frase
+  return true;                                                   // todo lo demás: aceptar
+}
+
 async function toolRegistrar(input, phone, session) {
   const nombreCompleto = [input.nombre, input.apellido].filter(Boolean).join(' ').trim();
+
+  // Si el modelo mandó un "nombre" que claramente no lo es (frase/pregunta/su propia
+  // respuesta), NO registrar nada y pedirle que lo confirme con el cliente. Solo aplica
+  // cuando de hecho se envió un nombre (los updates de solo-CP no traen nombre y siguen).
+  if (nombreCompleto && !esNombreValido(nombreCompleto)) {
+    console.log(`[DIAG] nombre rechazado: "${nombreCompleto}"`);
+    return 'El nombre recibido no parece un nombre de persona. NO se registró. Pregúntale al cliente su nombre de forma natural para confirmarlo (sin mencionar este error ni hablar de sistemas/registros).';
+  }
 
   // Refuerzo: "Mayoreo fuera de zona" solo aplica fuera de CDMX/Edomex. Si el CP
   // del cliente cae en zona de entrega directa, corrige el segmento contradictorio.
